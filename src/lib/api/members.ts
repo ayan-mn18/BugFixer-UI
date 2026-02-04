@@ -27,7 +27,7 @@ export interface MemberResponse {
 }
 
 export interface AccessRequestsResponse {
-  requests: AccessRequest[];
+  accessRequests: AccessRequest[];
 }
 
 export interface AccessRequestResponse {

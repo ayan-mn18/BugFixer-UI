@@ -478,7 +478,7 @@ export const useMembersStore = create<MembersState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await membersApi.getAccessRequests(projectId);
-      set({ accessRequests: response.requests, isLoading: false });
+      set({ accessRequests: response.accessRequests || [], isLoading: false });
     } catch (error) {
       const message = getErrorMessage(error);
       set({ isLoading: false, error: message });

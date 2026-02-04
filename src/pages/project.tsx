@@ -31,7 +31,6 @@ import {
   AlertTriangle,
   Cpu,
   GripVertical,
-  X,
   Trash2,
   Loader2,
 } from 'lucide-react';
@@ -40,13 +39,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet';
 import {
   Dialog,
   DialogContent,
@@ -230,10 +222,10 @@ function KanbanColumn({ status, bugs, onBugClick, isAdmin }: KanbanColumnProps) 
 }
 
 // ============================================================================
-// BUG DETAIL SHEET
+// BUG DETAIL MODAL
 // ============================================================================
 
-interface BugDetailSheetProps {
+interface BugDetailModalProps {
   bug: BugType | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -242,7 +234,7 @@ interface BugDetailSheetProps {
   onDelete: () => void;
 }
 
-function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDelete }: BugDetailSheetProps) {
+function BugDetailModal({ bug, open, onOpenChange, isAdmin, onStatusChange, onDelete }: BugDetailModalProps) {
   if (!bug) return null;
 
   const priorityConfig = PRIORITY_CONFIG[bug.priority];
@@ -250,23 +242,23 @@ function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
   const sourceConfig = SOURCE_CONFIG[bug.source];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
               <Bug className="h-5 w-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <SheetTitle className="text-left line-clamp-2">{bug.title}</SheetTitle>
-              <SheetDescription className="text-left">
+              <DialogTitle className="text-left line-clamp-2">{bug.title}</DialogTitle>
+              <DialogDescription className="text-left">
                 Created {formatDistanceToNow(new Date(bug.createdAt), { addSuffix: true })}
-              </SheetDescription>
+              </DialogDescription>
             </div>
           </div>
-        </SheetHeader>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-6">
           {/* Status & Priority */}
           <div className="flex gap-3">
             <Badge className={`${statusConfig.color} text-white`}>{statusConfig.label}</Badge>
@@ -278,7 +270,7 @@ function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
             <div className="space-y-2">
               <Label>Move to</Label>
               <Select value={bug.status} onValueChange={(v) => onStatusChange(v as Status)}>
-                <SelectTrigger>
+                <SelectTrigger className="w-[200px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -305,41 +297,44 @@ function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
             </p>
           </div>
 
-          {/* Source */}
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">Source</Label>
-            <p className="text-sm">{sourceConfig.label}</p>
-          </div>
+          <div className="grid grid-cols-2 gap-6">
+            {/* Source */}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Source</Label>
+              <p className="text-sm">{sourceConfig.label}</p>
+            </div>
 
-          {/* Reporter */}
-          <div className="space-y-2">
-            <Label className="text-muted-foreground">Reporter</Label>
-            {bug.reporter ? (
-              <div className="flex items-center gap-2">
-                <Avatar className="h-6 w-6">
-                  <AvatarImage src={bug.reporter.avatarUrl || ''} />
-                  <AvatarFallback>{bug.reporter.name.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <span className="text-sm">{bug.reporter.name}</span>
-              </div>
-            ) : bug.reporterEmail ? (
-              <p className="text-sm">{bug.reporterEmail}</p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Unknown</p>
-            )}
+            {/* Reporter */}
+            <div className="space-y-2">
+              <Label className="text-muted-foreground">Reporter</Label>
+              {bug.reporter ? (
+                <div className="flex items-center gap-2">
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={bug.reporter.avatarUrl || ''} />
+                    <AvatarFallback>{bug.reporter.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm">{bug.reporter.name}</span>
+                </div>
+              ) : bug.reporterEmail ? (
+                <p className="text-sm">{bug.reporterEmail}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Unknown</p>
+              )}
+            </div>
           </div>
 
           {/* Screenshots */}
-          {bug.screenshots.length > 0 && (
+          {bug.screenshots && bug.screenshots.length > 0 && (
             <div className="space-y-2">
               <Label className="text-muted-foreground">Screenshots</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {bug.screenshots.map((url, i) => (
                   <img
                     key={i}
                     src={url}
                     alt={`Screenshot ${i + 1}`}
-                    className="rounded-lg border object-cover h-24 w-full"
+                    className="rounded-lg border object-cover h-24 w-full cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => window.open(url, '_blank')}
                   />
                 ))}
               </div>
@@ -349,10 +344,10 @@ function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
           <Separator />
 
           {/* Metadata */}
-          <div className="space-y-2 text-xs text-muted-foreground">
+          <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
             <div className="flex justify-between">
               <span>Bug ID</span>
-              <span className="font-mono">{bug.id}</span>
+              <span className="font-mono text-right truncate ml-2">{bug.id.slice(0, 8)}...</span>
             </div>
             <div className="flex justify-between">
               <span>Last Updated</span>
@@ -362,17 +357,19 @@ function BugDetailSheet({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
 
           {/* Delete Button (Admin only) */}
           {isAdmin && (
-            <>
-              <Separator />
-              <Button variant="destructive" className="w-full" onClick={onDelete}>
+            <DialogFooter className="pt-4">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+              </Button>
+              <Button variant="destructive" onClick={onDelete}>
                 <Trash2 className="h-4 w-4 mr-2" />
                 Delete Bug
               </Button>
-            </>
+            </DialogFooter>
           )}
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -496,10 +493,10 @@ function CreateBugDialog({ open, onOpenChange, projectId }: CreateBugDialogProps
 }
 
 // ============================================================================
-// TEAM MANAGEMENT SHEET
+// TEAM MANAGEMENT MODAL
 // ============================================================================
 
-interface TeamSheetProps {
+interface TeamModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   project: Project;
@@ -507,7 +504,7 @@ interface TeamSheetProps {
   requests: AccessRequest[];
 }
 
-function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheetProps) {
+function TeamModal({ open, onOpenChange, project, members, requests }: TeamModalProps) {
   const { user } = useAuthStore();
   const { approveAccessRequest, rejectAccessRequest, removeMember, updateMemberRole } = useMembersStore();
   const isOwner = project.ownerId === user?.id;
@@ -549,68 +546,70 @@ function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheet
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Team Members
-          </SheetTitle>
-          <SheetDescription>
+          </DialogTitle>
+          <DialogDescription>
             Manage who has access to this project
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
-        <div className="mt-6 space-y-6">
+        <div className="mt-4 space-y-6">
           {/* Pending Requests */}
-          {isOwner && requests.length > 0 && (
+          {isOwner && requests && requests.length > 0 && (
             <div className="space-y-3">
               <h4 className="text-sm font-medium flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-amber-500" />
                 Pending Requests ({requests.length})
               </h4>
-              {requests.map((request) => (
-                <div key={request.id} className="p-3 border rounded-lg space-y-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={request.user?.avatarUrl || ''} />
-                      <AvatarFallback>{request.user?.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">{request.user?.name}</p>
-                      <p className="text-xs text-muted-foreground">{request.user?.email}</p>
+              <div className="grid gap-3">
+                {requests.map((request) => (
+                  <div key={request.id} className="p-3 border rounded-lg space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={request.user?.avatarUrl || ''} />
+                        <AvatarFallback>{request.user?.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{request.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{request.user?.email}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleApprove(request.id)}
+                        >
+                          Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleReject(request.id)}
+                        >
+                          Reject
+                        </Button>
+                      </div>
                     </div>
+                    {request.message && (
+                      <p className="text-sm text-muted-foreground pl-11">{request.message}</p>
+                    )}
                   </div>
-                  {request.message && (
-                    <p className="text-sm text-muted-foreground">{request.message}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleApprove(request.id)}
-                    >
-                      Approve
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleReject(request.id)}
-                    >
-                      Reject
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
 
-          <Separator />
+          {isOwner && requests && requests.length > 0 && <Separator />}
 
           {/* Owner */}
           <div className="space-y-3">
             <h4 className="text-sm font-medium">Owner</h4>
-            <div className="flex items-center gap-3 p-3 border rounded-lg">
-              <Avatar className="h-8 w-8">
+            <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+              <Avatar className="h-10 w-10">
                 <AvatarImage src={project.owner?.avatarUrl || ''} />
                 <AvatarFallback>{project.owner?.name.charAt(0)}</AvatarFallback>
               </Avatar>
@@ -618,64 +617,76 @@ function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheet
                 <p className="text-sm font-medium">{project.owner?.name}</p>
                 <p className="text-xs text-muted-foreground">{project.owner?.email}</p>
               </div>
-              <Badge>Owner</Badge>
+              <Badge className="bg-primary">Owner</Badge>
             </div>
           </div>
 
+          <Separator />
+
           {/* Members */}
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Members ({members.length})</h4>
-            {members.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No team members yet
-              </p>
+            <h4 className="text-sm font-medium">Members ({members?.length || 0})</h4>
+            {!members || members.length === 0 ? (
+              <div className="text-center py-8 border rounded-lg border-dashed">
+                <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No team members yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Invite people to collaborate on this project</p>
+              </div>
             ) : (
-              members.map((member) => (
-                <div key={member.id} className="flex items-center gap-3 p-3 border rounded-lg">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={member.user?.avatarUrl || ''} />
-                    <AvatarFallback>{member.user?.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{member.user?.name}</p>
-                    <p className="text-xs text-muted-foreground">{member.user?.email}</p>
-                  </div>
-                  {isOwner ? (
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={member.role}
-                        onValueChange={(v) => handleUpdateRole(member.id, v)}
-                      >
-                        <SelectTrigger className="w-32 h-8">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(ROLE_CONFIG).map(([key, config]) => (
-                            <SelectItem key={key} value={key}>
-                              {config.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => handleRemoveMember(member.id)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+              <div className="grid gap-2">
+                {members.map((member) => (
+                  <div key={member.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={member.user?.avatarUrl || ''} />
+                      <AvatarFallback>{member.user?.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{member.user?.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{member.user?.email}</p>
                     </div>
-                  ) : (
-                    <Badge variant="secondary">{ROLE_CONFIG[member.role].label}</Badge>
-                  )}
-                </div>
-              ))
+                    {isOwner ? (
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={member.role}
+                          onValueChange={(v) => handleUpdateRole(member.id, v)}
+                        >
+                          <SelectTrigger className="w-28 h-8">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(ROLE_CONFIG).map(([key, config]) => (
+                              <SelectItem key={key} value={key}>
+                                {config.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveMember(member.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Badge variant="secondary">{ROLE_CONFIG[member.role].label}</Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -866,7 +877,7 @@ export function ProjectPage() {
             <Button variant="outline" size="sm" onClick={() => setTeamSheetOpen(true)}>
               <Users className="h-4 w-4 mr-1" />
               Team
-              {requests.length > 0 && (
+              {requests && requests.length > 0 && (
                 <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center">
                   {requests.length}
                 </Badge>
@@ -913,8 +924,8 @@ export function ProjectPage() {
         </DragOverlay>
       </DndContext>
 
-      {/* Bug Detail Sheet */}
-      <BugDetailSheet
+      {/* Bug Detail Modal */}
+      <BugDetailModal
         bug={selectedBug}
         open={bugSheetOpen}
         onOpenChange={setBugSheetOpen}
@@ -930,8 +941,8 @@ export function ProjectPage() {
         projectId={project.id}
       />
 
-      {/* Team Sheet */}
-      <TeamSheet
+      {/* Team Modal */}
+      <TeamModal
         open={teamSheetOpen}
         onOpenChange={setTeamSheetOpen}
         project={project}
