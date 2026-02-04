@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock } from 'lucide-react';
+import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -128,14 +128,26 @@ export function DashboardPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
   const { user } = useAuthStore();
-  const { getUserProjects } = useProjectsStore();
+  const { projects, isLoading, fetchMyProjects } = useProjectsStore();
 
-  const projects = user ? getUserProjects(user.id) : [];
+  // Fetch projects on mount
+  useEffect(() => {
+    fetchMyProjects();
+  }, [fetchMyProjects]);
+
   const filteredProjects = projects.filter(
     (p: Project) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.description?.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading && projects.length === 0) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

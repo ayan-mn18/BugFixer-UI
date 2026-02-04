@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Globe, Bug, Users } from 'lucide-react';
+import { Search, Globe, Bug, Users, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,17 +23,25 @@ import type { Project } from '@/types';
 function ExploreProjectCard({ project }: { project: Project }) {
   const [requestOpen, setRequestOpen] = useState(false);
   const [message, setMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { user, isAuthenticated } = useAuthStore();
-  const { requestAccess, hasAccess } = useMembersStore();
+  const { requestAccess } = useMembersStore();
 
-  const userHasAccess = user ? hasAccess(project.id, user.id) : false;
   const isOwner = project.ownerId === user?.id;
+  // Simple check if user might have access - they're either owner or we show Request Access button
+  const userHasAccess = isOwner;
 
-  const handleRequestAccess = () => {
-    requestAccess(project.id, message);
-    toast.success('Access request sent!');
-    setRequestOpen(false);
-    setMessage('');
+  const handleRequestAccess = async () => {
+    setIsSubmitting(true);
+    const success = await requestAccess(project.id, message);
+    setIsSubmitting(false);
+    if (success) {
+      toast.success('Access request sent!');
+      setRequestOpen(false);
+      setMessage('');
+    } else {
+      toast.error('Failed to send access request');
+    }
   };
 
   return (
@@ -132,10 +140,13 @@ function ExploreProjectCard({ project }: { project: Project }) {
             />
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRequestOpen(false)}>
+            <Button variant="outline" onClick={() => setRequestOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleRequestAccess}>Send Request</Button>
+            <Button onClick={handleRequestAccess} disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Send Request
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -145,14 +156,26 @@ function ExploreProjectCard({ project }: { project: Project }) {
 
 export function ExplorePage() {
   const [search, setSearch] = useState('');
-  const { getPublicProjects } = useProjectsStore();
+  const { publicProjects, isLoading, fetchPublicProjects } = useProjectsStore();
 
-  const projects = getPublicProjects();
-  const filteredProjects = projects.filter(
+  useEffect(() => {
+    fetchPublicProjects();
+  }, [fetchPublicProjects]);
+
+  const filteredProjects = publicProjects.filter(
     (p: Project) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.description?.toLowerCase().includes(search.toLowerCase())
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading projects...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8 space-y-8">

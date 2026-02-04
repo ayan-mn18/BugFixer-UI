@@ -1,7 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, Project, Bug, ProjectMember, AccessRequest, Status, MemberRole } from '@/types';
-import { mockUsers, mockProjects, mockBugs, mockProjectMembers, mockAccessRequests } from '@/lib/mock-data';
+import type { User, Project, Bug, ProjectMember, AccessRequest, Status, MemberRole, Priority, Source } from '@/types';
+import * as authApi from '@/lib/api/auth';
+import * as projectsApi from '@/lib/api/projects';
+import * as bugsApi from '@/lib/api/bugs';
+import * as membersApi from '@/lib/api/members';
+import { getErrorMessage } from '@/lib/api/client';
 
 // ============================================================================
 // THEME STORE
@@ -35,7 +39,6 @@ export const useThemeStore = create<ThemeState>()(
     {
       name: 'bugfixer-theme',
       onRehydrateStorage: () => (state) => {
-        // Apply theme on rehydration
         if (state?.theme === 'dark') {
           document.documentElement.classList.add('dark');
         } else {
@@ -53,10 +56,14 @@ export const useThemeStore = create<ThemeState>()(
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
   login: (email: string, password: string) => Promise<boolean>;
   signup: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
-  updateProfile: (updates: Partial<User>) => void;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  updateProfile: (updates: { name?: string; avatarUrl?: string }) => Promise<boolean>;
+  clearError: () => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -64,49 +71,95 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
+      isLoading: false,
+      error: null,
 
-      login: async (email: string, _password: string) => {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 500));
-        
-        const user = mockUsers.find((u) => u.email === email);
-        if (user) {
-          set({ user, isAuthenticated: true });
+      login: async (email: string, password: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authApi.login({ email, password });
+          set({ 
+            user: response.user, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          });
           return true;
+        } catch (error) {
+          const message = getErrorMessage(error);
+          set({ isLoading: false, error: message });
+          return false;
         }
-        // For demo, allow any email to login as first mock user
-        set({ user: mockUsers[0], isAuthenticated: true });
-        return true;
       },
 
-      signup: async (email: string, _password: string, name: string) => {
-        await new Promise((resolve) => setTimeout(resolve, 500));
+      signup: async (email: string, password: string, name: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authApi.signup({ email, password, name });
+          set({ 
+            user: response.user, 
+            isAuthenticated: true, 
+            isLoading: false,
+            error: null 
+          });
+          return true;
+        } catch (error) {
+          const message = getErrorMessage(error);
+          set({ isLoading: false, error: message });
+          return false;
+        }
+      },
+
+      logout: async () => {
+        set({ isLoading: true });
+        try {
+          await authApi.logout();
+        } catch {
+          // Continue with logout even if API fails
+        } finally {
+          localStorage.removeItem('bugfixer_token');
+          set({ user: null, isAuthenticated: false, isLoading: false, error: null });
+        }
+      },
+
+      checkAuth: async () => {
+        // Only check if we think we're authenticated
+        if (!get().isAuthenticated && !localStorage.getItem('bugfixer_token')) {
+          return;
+        }
         
-        const newUser: User = {
-          id: `user-${Date.now()}`,
-          email,
-          name,
-          avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        set({ user: newUser, isAuthenticated: true });
-        return true;
-      },
-
-      logout: () => {
-        set({ user: null, isAuthenticated: false });
-      },
-
-      updateProfile: (updates) => {
-        const { user } = get();
-        if (user) {
-          set({ user: { ...user, ...updates, updatedAt: new Date().toISOString() } });
+        set({ isLoading: true });
+        try {
+          const response = await authApi.getCurrentUser();
+          set({ user: response.user, isAuthenticated: true, isLoading: false });
+        } catch {
+          // Token invalid or expired
+          localStorage.removeItem('bugfixer_token');
+          set({ user: null, isAuthenticated: false, isLoading: false });
         }
       },
+
+      updateProfile: async (updates) => {
+        set({ isLoading: true, error: null });
+        try {
+          const response = await authApi.updateProfile(updates);
+          set({ user: response.user, isLoading: false });
+          return true;
+        } catch (error) {
+          const message = getErrorMessage(error);
+          set({ isLoading: false, error: message });
+          return false;
+        }
+      },
+
+      clearError: () => set({ error: null }),
     }),
     {
       name: 'bugfixer-auth',
+      partialize: (state) => ({ 
+        user: state.user, 
+        isAuthenticated: state.isAuthenticated 
+      }),
     }
   )
 );
@@ -117,78 +170,134 @@ export const useAuthStore = create<AuthState>()(
 
 interface ProjectsState {
   projects: Project[];
+  publicProjects: Project[];
   currentProject: Project | null;
+  isLoading: boolean;
+  error: string | null;
+  fetchMyProjects: () => Promise<void>;
+  fetchPublicProjects: () => Promise<void>;
+  fetchProjectBySlug: (slug: string) => Promise<Project | null>;
   setCurrentProject: (project: Project | null) => void;
-  createProject: (name: string, description: string, isPublic: boolean) => Project;
-  updateProject: (projectId: string, updates: Partial<Project>) => void;
-  deleteProject: (projectId: string) => void;
+  createProject: (name: string, description: string, isPublic: boolean) => Promise<Project | null>;
+  updateProject: (projectId: string, updates: Partial<Project>) => Promise<boolean>;
+  deleteProject: (projectId: string) => Promise<boolean>;
   getProjectBySlug: (slug: string) => Project | undefined;
-  getUserProjects: (userId: string) => Project[];
-  getPublicProjects: () => Project[];
+  clearError: () => void;
 }
 
 export const useProjectsStore = create<ProjectsState>((set, get) => ({
-  projects: [...mockProjects],
+  projects: [],
+  publicProjects: [],
   currentProject: null,
+  isLoading: false,
+  error: null,
+
+  fetchMyProjects: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await projectsApi.getMyProjects();
+      set({ projects: response.projects, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  fetchPublicProjects: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await projectsApi.getPublicProjects();
+      set({ publicProjects: response.projects, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  fetchProjectBySlug: async (slug: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await projectsApi.getProjectBySlug(slug);
+      set({ currentProject: response.project, isLoading: false });
+      return response.project;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message, currentProject: null });
+      return null;
+    }
+  },
 
   setCurrentProject: (project) => set({ currentProject: project }),
 
-  createProject: (name, description, isPublic) => {
-    const { user } = useAuthStore.getState();
-    const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    
-    const newProject: Project = {
-      id: `project-${Date.now()}`,
-      name,
-      description,
-      slug: `${slug}-${Date.now()}`,
-      isPublic,
-      ownerId: user?.id || '',
-      owner: user || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      bugCount: 0,
-      openBugCount: 0,
-    };
-
-    set((state) => ({ projects: [...state.projects, newProject] }));
-    return newProject;
+  createProject: async (name, description, isPublic) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await projectsApi.createProject({ name, description, isPublic });
+      set((state) => ({ 
+        projects: [...state.projects, response.project], 
+        isLoading: false 
+      }));
+      return response.project;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return null;
+    }
   },
 
-  updateProject: (projectId, updates) => {
-    set((state) => ({
-      projects: state.projects.map((p) =>
-        p.id === projectId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p
-      ),
-    }));
+  updateProject: async (projectId, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Filter out null values and only include defined values
+      const cleanUpdates: { name?: string; description?: string; isPublic?: boolean } = {};
+      if (updates.name !== undefined) cleanUpdates.name = updates.name;
+      if (updates.description !== undefined && updates.description !== null) {
+        cleanUpdates.description = updates.description;
+      }
+      if (updates.isPublic !== undefined) cleanUpdates.isPublic = updates.isPublic;
+      
+      const response = await projectsApi.updateProject(projectId, cleanUpdates);
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.id === projectId ? response.project : p
+        ),
+        currentProject: state.currentProject?.id === projectId 
+          ? response.project 
+          : state.currentProject,
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  deleteProject: (projectId) => {
-    set((state) => ({
-      projects: state.projects.filter((p) => p.id !== projectId),
-    }));
+  deleteProject: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await projectsApi.deleteProject(projectId);
+      set((state) => ({
+        projects: state.projects.filter((p) => p.id !== projectId),
+        currentProject: state.currentProject?.id === projectId 
+          ? null 
+          : state.currentProject,
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
   getProjectBySlug: (slug) => {
     return get().projects.find((p) => p.slug === slug);
   },
 
-  getUserProjects: (userId): Project[] => {
-    const { projects } = get();
-    const members: ProjectMember[] = useMembersStore.getState().members;
-    
-    const ownedProjects = projects.filter((p: Project) => p.ownerId === userId);
-    const memberProjectIds: string[] = members.filter((m: ProjectMember) => m.userId === userId).map((m: ProjectMember) => m.projectId);
-    const memberProjects = projects.filter(
-      (p: Project): boolean => memberProjectIds.includes(p.id) && p.ownerId !== userId
-    );
-    
-    return [...ownedProjects, ...memberProjects];
-  },
-
-  getPublicProjects: () => {
-    return get().projects.filter((p) => p.isPublic);
-  },
+  clearError: () => set({ error: null }),
 }));
 
 // ============================================================================
@@ -197,60 +306,121 @@ export const useProjectsStore = create<ProjectsState>((set, get) => ({
 
 interface BugsState {
   bugs: Bug[];
-  createBug: (projectId: string, bug: Partial<Bug>) => Bug;
-  updateBug: (bugId: string, updates: Partial<Bug>) => void;
-  updateBugStatus: (bugId: string, status: Status) => void;
-  deleteBug: (bugId: string) => void;
+  isLoading: boolean;
+  error: string | null;
+  fetchBugsByProject: (projectId: string) => Promise<void>;
+  createBug: (projectId: string, bug: Partial<Bug>) => Promise<Bug | null>;
+  updateBug: (bugId: string, updates: Partial<Bug>) => Promise<boolean>;
+  updateBugStatus: (bugId: string, status: Status) => Promise<boolean>;
+  deleteBug: (bugId: string) => Promise<boolean>;
   getBugsByProject: (projectId: string) => Bug[];
   getBugsByStatus: (projectId: string, status: Status) => Bug[];
+  clearBugs: () => void;
+  clearError: () => void;
 }
 
 export const useBugsStore = create<BugsState>((set, get) => ({
-  bugs: [...mockBugs],
+  bugs: [],
+  isLoading: false,
+  error: null,
 
-  createBug: (projectId, bugData) => {
-    const { user } = useAuthStore.getState();
-    
-    const newBug: Bug = {
-      id: `bug-${Date.now()}`,
-      title: bugData.title || 'Untitled Bug',
-      description: bugData.description || null,
-      priority: bugData.priority || 'MEDIUM',
-      status: 'TRIAGE',
-      source: bugData.source || 'INTERNAL_QA',
-      reporterEmail: bugData.reporterEmail || null,
-      screenshots: bugData.screenshots || [],
-      projectId,
-      reporterId: user?.id || null,
-      reporter: user || undefined,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    set((state) => ({ bugs: [...state.bugs, newBug] }));
-    return newBug;
+  fetchBugsByProject: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await bugsApi.getBugsByProject(projectId);
+      set({ bugs: response.bugs, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
   },
 
-  updateBug: (bugId, updates) => {
-    set((state) => ({
-      bugs: state.bugs.map((b) =>
-        b.id === bugId ? { ...b, ...updates, updatedAt: new Date().toISOString() } : b
-      ),
-    }));
+  createBug: async (projectId, bugData) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await bugsApi.createBug({
+        title: bugData.title || 'Untitled Bug',
+        description: bugData.description || undefined,
+        priority: bugData.priority,
+        status: bugData.status,
+        source: bugData.source,
+        reporterEmail: bugData.reporterEmail || undefined,
+        screenshots: bugData.screenshots,
+        projectId,
+      });
+      set((state) => ({ 
+        bugs: [...state.bugs, response.bug], 
+        isLoading: false 
+      }));
+      return response.bug;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return null;
+    }
   },
 
-  updateBugStatus: (bugId, status) => {
+  updateBug: async (bugId, updates) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Filter out null values and only include defined values
+      const cleanUpdates: { title?: string; description?: string; priority?: Priority; status?: Status; source?: Source } = {};
+      if (updates.title !== undefined) cleanUpdates.title = updates.title;
+      if (updates.description !== undefined && updates.description !== null) {
+        cleanUpdates.description = updates.description;
+      }
+      if (updates.priority !== undefined) cleanUpdates.priority = updates.priority;
+      if (updates.status !== undefined) cleanUpdates.status = updates.status;
+      if (updates.source !== undefined) cleanUpdates.source = updates.source;
+      
+      const response = await bugsApi.updateBug(bugId, cleanUpdates);
+      set((state) => ({
+        bugs: state.bugs.map((b) => (b.id === bugId ? response.bug : b)),
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
+  },
+
+  updateBugStatus: async (bugId, status) => {
+    // Optimistic update for smooth drag & drop
+    const previousBugs = get().bugs;
     set((state) => ({
       bugs: state.bugs.map((b) =>
         b.id === bugId ? { ...b, status, updatedAt: new Date().toISOString() } : b
       ),
     }));
+
+    try {
+      await bugsApi.updateBugStatus(bugId, status);
+      return true;
+    } catch (error) {
+      // Rollback on error
+      set({ bugs: previousBugs });
+      const message = getErrorMessage(error);
+      set({ error: message });
+      return false;
+    }
   },
 
-  deleteBug: (bugId) => {
-    set((state) => ({
-      bugs: state.bugs.filter((b) => b.id !== bugId),
-    }));
+  deleteBug: async (bugId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await bugsApi.deleteBug(bugId);
+      set((state) => ({
+        bugs: state.bugs.filter((b) => b.id !== bugId),
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
   getBugsByProject: (projectId) => {
@@ -260,6 +430,10 @@ export const useBugsStore = create<BugsState>((set, get) => ({
   getBugsByStatus: (projectId, status) => {
     return get().bugs.filter((b) => b.projectId === projectId && b.status === status);
   },
+
+  clearBugs: () => set({ bugs: [], error: null }),
+
+  clearError: () => set({ error: null }),
 }));
 
 // ============================================================================
@@ -268,148 +442,155 @@ export const useBugsStore = create<BugsState>((set, get) => ({
 
 interface MembersState {
   members: ProjectMember[];
-  requests: AccessRequest[];
-  addMember: (projectId: string, userId: string, role: MemberRole) => void;
-  removeMember: (memberId: string) => void;
-  updateMemberRole: (memberId: string, role: MemberRole) => void;
-  requestAccess: (projectId: string, message: string) => void;
-  approveRequest: (requestId: string) => void;
-  rejectRequest: (requestId: string, note?: string) => void;
-  getProjectMembers: (projectId: string) => ProjectMember[];
-  getPendingRequests: (projectId: string) => AccessRequest[];
-  hasAccess: (projectId: string, userId: string) => boolean;
-  getUserRole: (projectId: string, userId: string) => MemberRole | 'OWNER' | null;
+  accessRequests: AccessRequest[];
+  isLoading: boolean;
+  error: string | null;
+  fetchProjectMembers: (projectId: string) => Promise<void>;
+  fetchAccessRequests: (projectId: string) => Promise<void>;
+  addMember: (projectId: string, email: string, role?: MemberRole) => Promise<boolean>;
+  removeMember: (memberId: string) => Promise<boolean>;
+  updateMemberRole: (memberId: string, role: MemberRole) => Promise<boolean>;
+  requestAccess: (projectId: string, message?: string) => Promise<boolean>;
+  approveAccessRequest: (requestId: string, role?: MemberRole) => Promise<boolean>;
+  rejectAccessRequest: (requestId: string, note?: string) => Promise<boolean>;
+  clearMembers: () => void;
+  clearError: () => void;
 }
 
 export const useMembersStore = create<MembersState>((set, get) => ({
-  members: [...mockProjectMembers],
-  requests: [...mockAccessRequests],
+  members: [],
+  accessRequests: [],
+  isLoading: false,
+  error: null,
 
-  addMember: (projectId, userId, role) => {
-    const { user } = useAuthStore.getState();
-    const targetUser = mockUsers.find((u) => u.id === userId);
-    
-    const newMember: ProjectMember = {
-      id: `member-${Date.now()}`,
-      projectId,
-      userId,
-      user: targetUser,
-      role,
-      invitedBy: user?.id || null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    set((state) => ({ members: [...state.members, newMember] }));
+  fetchProjectMembers: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.getProjectMembers(projectId);
+      set({ members: response.members, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
   },
 
-  removeMember: (memberId) => {
-    set((state) => ({
-      members: state.members.filter((m) => m.id !== memberId),
-    }));
+  fetchAccessRequests: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.getAccessRequests(projectId);
+      set({ accessRequests: response.requests, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
   },
 
-  updateMemberRole: (memberId, role) => {
-    set((state) => ({
-      members: state.members.map((m) =>
-        m.id === memberId ? { ...m, role, updatedAt: new Date().toISOString() } : m
-      ),
-    }));
+  addMember: async (projectId, email, role) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.addMember(projectId, { email, role });
+      set((state) => ({ 
+        members: [...state.members, response.member], 
+        isLoading: false 
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  requestAccess: (projectId, message) => {
-    const { user } = useAuthStore.getState();
-    if (!user) return;
+  removeMember: async (memberId) => {
+    // Find the member to get projectId
+    const member = get().members.find((m) => m.id === memberId);
+    if (!member) return false;
 
-    const newRequest: AccessRequest = {
-      id: `request-${Date.now()}`,
-      projectId,
-      userId: user.id,
-      user,
-      status: 'PENDING',
-      message,
-      reviewedBy: null,
-      reviewedAt: null,
-      reviewNote: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    set((state) => ({ requests: [...state.requests, newRequest] }));
+    set({ isLoading: true, error: null });
+    try {
+      await membersApi.removeMember(member.projectId, memberId);
+      set((state) => ({
+        members: state.members.filter((m) => m.id !== memberId),
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  approveRequest: (requestId) => {
-    const { requests } = get();
-    const request = requests.find((r) => r.id === requestId);
-    if (!request) return;
+  updateMemberRole: async (memberId, role) => {
+    // Find the member to get projectId
+    const member = get().members.find((m) => m.id === memberId);
+    if (!member) return false;
 
-    const { user } = useAuthStore.getState();
-    
-    // Update request status
-    set((state) => ({
-      requests: state.requests.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: 'APPROVED' as const,
-              reviewedBy: user?.id || null,
-              reviewedAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            }
-          : r
-      ),
-    }));
-
-    // Add as member
-    get().addMember(request.projectId, request.userId, 'VIEWER');
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.updateMemberRole(member.projectId, memberId, { role });
+      set((state) => ({
+        members: state.members.map((m) => (m.id === memberId ? response.member : m)),
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  rejectRequest: (requestId, note) => {
-    const { user } = useAuthStore.getState();
-    
-    set((state) => ({
-      requests: state.requests.map((r) =>
-        r.id === requestId
-          ? {
-              ...r,
-              status: 'REJECTED' as const,
-              reviewedBy: user?.id || null,
-              reviewedAt: new Date().toISOString(),
-              reviewNote: note || null,
-              updatedAt: new Date().toISOString(),
-            }
-          : r
-      ),
-    }));
+  requestAccess: async (projectId, message) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.requestAccess(projectId, { message });
+      set((state) => ({ 
+        accessRequests: [...state.accessRequests, response.request], 
+        isLoading: false 
+      }));
+      return true;
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      set({ isLoading: false, error: errorMessage });
+      return false;
+    }
   },
 
-  getProjectMembers: (projectId) => {
-    return get().members.filter((m) => m.projectId === projectId);
+  approveAccessRequest: async (requestId, role) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await membersApi.approveAccessRequest(requestId, role);
+      set((state) => ({
+        accessRequests: state.accessRequests.filter((r) => r.id !== requestId),
+        members: [...state.members, response.member],
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  getPendingRequests: (projectId) => {
-    return get().requests.filter((r) => r.projectId === projectId && r.status === 'PENDING');
+  rejectAccessRequest: async (requestId, note) => {
+    set({ isLoading: true, error: null });
+    try {
+      await membersApi.rejectAccessRequest(requestId, note);
+      set((state) => ({
+        accessRequests: state.accessRequests.filter((r) => r.id !== requestId),
+        isLoading: false,
+      }));
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
   },
 
-  hasAccess: (projectId, userId): boolean => {
-    const projects: Project[] = useProjectsStore.getState().projects;
-    const project = projects.find((p: Project) => p.id === projectId);
-    
-    if (!project) return false;
-    if (project.ownerId === userId) return true;
-    if (project.isPublic) return true;
-    
-    return get().members.some((m: ProjectMember): boolean => m.projectId === projectId && m.userId === userId);
-  },
+  clearMembers: () => set({ members: [], accessRequests: [], error: null }),
 
-  getUserRole: (projectId, userId) => {
-    const projects: Project[] = useProjectsStore.getState().projects;
-    const project = projects.find((p: Project) => p.id === projectId);
-    
-    if (!project) return null;
-    if (project.ownerId === userId) return 'OWNER';
-    
-    const membership = get().members.find((m) => m.projectId === projectId && m.userId === userId);
-    return membership?.role || null;
-  },
+  clearError: () => set({ error: null }),
 }));

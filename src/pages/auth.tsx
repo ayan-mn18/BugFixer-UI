@@ -12,26 +12,19 @@ import { toast } from 'sonner';
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuthStore();
+  const { login, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    clearError();
 
-    try {
-      const success = await login(email, password);
-      if (success) {
-        toast.success('Welcome back!');
-        navigate('/dashboard');
-      } else {
-        toast.error('Invalid credentials');
-      }
-    } catch {
-      toast.error('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    const success = await login(email, password);
+    if (success) {
+      toast.success('Welcome back!');
+      navigate('/dashboard');
+    } else {
+      toast.error(error || 'Invalid credentials');
     }
   };
 
@@ -101,10 +94,6 @@ export function LoginPage() {
           </CardFooter>
         </form>
       </Card>
-
-      <p className="text-xs text-muted-foreground text-center mt-4">
-        Demo: Use any email to login (e.g., john@example.com)
-      </p>
     </motion.div>
   );
 }
@@ -113,26 +102,19 @@ export function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const { signup } = useAuthStore();
+  const { signup, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    clearError();
 
-    try {
-      const success = await signup(email, password, name);
-      if (success) {
-        toast.success('Account created successfully!');
-        navigate('/dashboard');
-      } else {
-        toast.error('Failed to create account');
-      }
-    } catch {
-      toast.error('Something went wrong');
-    } finally {
-      setIsLoading(false);
+    const success = await signup(email, password, name);
+    if (success) {
+      toast.success('Account created successfully!');
+      navigate('/dashboard');
+    } else {
+      toast.error(error || 'Failed to create account');
     }
   };
 

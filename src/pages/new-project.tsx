@@ -15,22 +15,19 @@ export function NewProjectPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  const { createProject } = useProjectsStore();
+  const { createProject, isLoading, error, clearError } = useProjectsStore();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    clearError();
 
-    try {
-      const project = createProject(name, description, isPublic);
+    const project = await createProject(name, description, isPublic);
+    if (project) {
       toast.success('Project created successfully!');
       navigate(`/projects/${project.slug}`);
-    } catch {
-      toast.error('Failed to create project');
-    } finally {
-      setIsLoading(false);
+    } else {
+      toast.error(error || 'Failed to create project');
     }
   };
 

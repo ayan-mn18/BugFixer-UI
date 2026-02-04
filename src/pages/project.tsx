@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -33,6 +33,7 @@ import {
   GripVertical,
   X,
   Trash2,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -390,17 +391,26 @@ function CreateBugDialog({ open, onOpenChange, projectId }: CreateBugDialogProps
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<Priority>('MEDIUM');
   const [source, setSource] = useState<Source>('INTERNAL_QA');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { createBug } = useBugsStore();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    createBug(projectId, { title, description, priority, source });
-    toast.success('Bug created successfully!');
-    onOpenChange(false);
-    setTitle('');
-    setDescription('');
-    setPriority('MEDIUM');
-    setSource('INTERNAL_QA');
+    setIsSubmitting(true);
+
+    const bug = await createBug(projectId, { title, description, priority, source });
+
+    setIsSubmitting(false);
+    if (bug) {
+      toast.success('Bug created successfully!');
+      onOpenChange(false);
+      setTitle('');
+      setDescription('');
+      setPriority('MEDIUM');
+      setSource('INTERNAL_QA');
+    } else {
+      toast.error('Failed to create bug');
+    }
   };
 
   return (
@@ -471,10 +481,11 @@ function CreateBugDialog({ open, onOpenChange, projectId }: CreateBugDialogProps
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim()}>
+            <Button type="submit" disabled={!title.trim() || isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create Bug
             </Button>
           </DialogFooter>
@@ -498,8 +509,44 @@ interface TeamSheetProps {
 
 function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheetProps) {
   const { user } = useAuthStore();
-  const { approveRequest, rejectRequest, removeMember, updateMemberRole } = useMembersStore();
+  const { approveAccessRequest, rejectAccessRequest, removeMember, updateMemberRole } = useMembersStore();
   const isOwner = project.ownerId === user?.id;
+
+  const handleApprove = async (requestId: string) => {
+    const success = await approveAccessRequest(requestId);
+    if (success) {
+      toast.success('Request approved!');
+    } else {
+      toast.error('Failed to approve request');
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    const success = await rejectAccessRequest(requestId);
+    if (success) {
+      toast.success('Request rejected');
+    } else {
+      toast.error('Failed to reject request');
+    }
+  };
+
+  const handleRemoveMember = async (memberId: string) => {
+    const success = await removeMember(memberId);
+    if (success) {
+      toast.success('Member removed');
+    } else {
+      toast.error('Failed to remove member');
+    }
+  };
+
+  const handleUpdateRole = async (memberId: string, role: string) => {
+    const success = await updateMemberRole(memberId, role as any);
+    if (success) {
+      toast.success('Role updated!');
+    } else {
+      toast.error('Failed to update role');
+    }
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -540,20 +587,14 @@ function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheet
                   <div className="flex gap-2">
                     <Button
                       size="sm"
-                      onClick={() => {
-                        approveRequest(request.id);
-                        toast.success('Request approved!');
-                      }}
+                      onClick={() => handleApprove(request.id)}
                     >
                       Approve
                     </Button>
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => {
-                        rejectRequest(request.id);
-                        toast.success('Request rejected');
-                      }}
+                      onClick={() => handleReject(request.id)}
                     >
                       Reject
                     </Button>
@@ -603,10 +644,7 @@ function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheet
                     <div className="flex items-center gap-2">
                       <Select
                         value={member.role}
-                        onValueChange={(v) => {
-                          updateMemberRole(member.id, v as any);
-                          toast.success('Role updated!');
-                        }}
+                        onValueChange={(v) => handleUpdateRole(member.id, v)}
                       >
                         <SelectTrigger className="w-32 h-8">
                           <SelectValue />
@@ -623,10 +661,7 @@ function TeamSheet({ open, onOpenChange, project, members, requests }: TeamSheet
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8 text-destructive"
-                        onClick={() => {
-                          removeMember(member.id);
-                          toast.success('Member removed');
-                        }}
+                        onClick={() => handleRemoveMember(member.id)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -652,9 +687,9 @@ export function ProjectPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { getProjectBySlug } = useProjectsStore();
-  const { getBugsByProject, updateBugStatus, deleteBug } = useBugsStore();
-  const { getProjectMembers, getPendingRequests, getUserRole } = useMembersStore();
+  const { currentProject, isLoading: projectLoading, fetchProjectBySlug } = useProjectsStore();
+  const { bugs, isLoading: bugsLoading, fetchBugsByProject, updateBugStatus, deleteBug } = useBugsStore();
+  const { members, accessRequests, isLoading: membersLoading, fetchProjectMembers, fetchAccessRequests } = useMembersStore();
 
   const [selectedBug, setSelectedBug] = useState<BugType | null>(null);
   const [bugSheetOpen, setBugSheetOpen] = useState(false);
@@ -663,16 +698,31 @@ export function ProjectPage() {
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
 
-  const project = slug ? getProjectBySlug(slug) : undefined;
-  const bugs = project ? getBugsByProject(project.id) : [];
-  const members = project ? getProjectMembers(project.id) : [];
-  const requests = project ? getPendingRequests(project.id) : [];
-  const userRole = project && user ? getUserRole(project.id, user.id) : null;
+  // Fetch project data when slug changes
+  useEffect(() => {
+    if (slug) {
+      fetchProjectBySlug(slug);
+    }
+  }, [slug, fetchProjectBySlug]);
+
+  // Fetch bugs and members when project is loaded
+  useEffect(() => {
+    if (currentProject?.id) {
+      fetchBugsByProject(currentProject.id);
+      fetchProjectMembers(currentProject.id);
+      fetchAccessRequests(currentProject.id);
+    }
+  }, [currentProject?.id, fetchBugsByProject, fetchProjectMembers, fetchAccessRequests]);
+
+  const project = currentProject;
+  const requests = accessRequests;
+  const userRole = project?.ownerId === user?.id ? 'OWNER' :
+    members.find((m: ProjectMember) => m.userId === user?.id)?.role || null;
   const isAdmin = userRole === 'OWNER';
   const canCreateBugs = isAdmin || userRole === 'CONTRIBUTOR' || userRole === 'MAINTAINER';
 
   const filteredBugs = bugs.filter(
-    (b) =>
+    (b: BugType) =>
       b.title.toLowerCase().includes(search.toLowerCase()) ||
       b.description?.toLowerCase().includes(search.toLowerCase())
   );
@@ -680,7 +730,7 @@ export function ProjectPage() {
   const bugsByStatus = useMemo(() => {
     const statuses: Status[] = ['TRIAGE', 'IN_PROGRESS', 'CODE_REVIEW', 'QA_TESTING', 'DEPLOYED'];
     return statuses.reduce((acc, status) => {
-      acc[status] = filteredBugs.filter((b) => b.status === status);
+      acc[status] = filteredBugs.filter((b: BugType) => b.status === status);
       return acc;
     }, {} as Record<Status, BugType[]>);
   }, [filteredBugs]);
@@ -694,7 +744,7 @@ export function ProjectPage() {
     setActiveDragId(event.active.id as string);
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveDragId(null);
 
@@ -709,14 +759,18 @@ export function ProjectPage() {
     // Find which column the bug was dropped in
     for (const status of statuses) {
       const bugsInColumn = bugsByStatus[status];
-      if (bugsInColumn.some((b) => b.id === overId) || overId === status) {
-        const bug = bugs.find((b) => b.id === bugId);
+      if (bugsInColumn.some((b: BugType) => b.id === overId) || overId === status) {
+        const bug = bugs.find((b: BugType) => b.id === bugId);
         if (bug && bug.status !== status) {
-          updateBugStatus(bugId, status);
-          if (status === 'DEPLOYED' && bug.reporterEmail) {
-            toast.success(`Bug deployed! Email sent to ${bug.reporterEmail}`);
+          const success = await updateBugStatus(bugId, status);
+          if (success) {
+            if (status === 'DEPLOYED' && bug.reporterEmail) {
+              toast.success(`Bug deployed! Email sent to ${bug.reporterEmail}`);
+            } else {
+              toast.success(`Bug moved to ${STATUS_CONFIG[status].label}`);
+            }
           } else {
-            toast.success(`Bug moved to ${STATUS_CONFIG[status].label}`);
+            toast.error('Failed to update bug status');
           }
         }
         break;
@@ -724,26 +778,44 @@ export function ProjectPage() {
     }
   };
 
-  const handleStatusChange = (status: Status) => {
+  const handleStatusChange = async (status: Status) => {
     if (!selectedBug) return;
-    updateBugStatus(selectedBug.id, status);
-    setSelectedBug({ ...selectedBug, status });
-    if (status === 'DEPLOYED' && selectedBug.reporterEmail) {
-      toast.success(`Bug deployed! Email sent to ${selectedBug.reporterEmail}`);
+    const success = await updateBugStatus(selectedBug.id, status);
+    if (success) {
+      setSelectedBug({ ...selectedBug, status });
+      if (status === 'DEPLOYED' && selectedBug.reporterEmail) {
+        toast.success(`Bug deployed! Email sent to ${selectedBug.reporterEmail}`);
+      } else {
+        toast.success(`Bug moved to ${STATUS_CONFIG[status].label}`);
+      }
     } else {
-      toast.success(`Bug moved to ${STATUS_CONFIG[status].label}`);
+      toast.error('Failed to update bug status');
     }
   };
 
-  const handleDeleteBug = () => {
+  const handleDeleteBug = async () => {
     if (!selectedBug) return;
-    deleteBug(selectedBug.id);
-    setBugSheetOpen(false);
-    setSelectedBug(null);
-    toast.success('Bug deleted');
+    const success = await deleteBug(selectedBug.id);
+    if (success) {
+      setBugSheetOpen(false);
+      setSelectedBug(null);
+      toast.success('Bug deleted');
+    } else {
+      toast.error('Failed to delete bug');
+    }
   };
 
-  const activeBug = activeDragId ? bugs.find((b) => b.id === activeDragId) : null;
+  const activeBug = activeDragId ? bugs.find((b: BugType) => b.id === activeDragId) : null;
+  const isLoading = projectLoading || bugsLoading || membersLoading;
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Loading project...</p>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
