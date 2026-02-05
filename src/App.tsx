@@ -11,6 +11,7 @@ import {
   NewProjectPage,
   ProfilePage,
   ProjectPage,
+  InvitePage,
 } from '@/pages';
 import { useAuthStore } from '@/stores';
 
@@ -129,6 +130,9 @@ function App() {
             }
           />
         </Route>
+
+        {/* Invitation page (accessible without auth to show info) */}
+        <Route path="/invite/:token" element={<InvitePage />} />
 
         {/* Catch all - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />

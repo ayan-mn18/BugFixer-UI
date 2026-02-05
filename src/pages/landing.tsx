@@ -77,7 +77,7 @@ const features = [
   {
     icon: Shield,
     title: 'Access Control',
-    description: 'Fine-grained permissions with Viewer, Contributor, and Maintainer roles.',
+    description: 'Fine-grained permissions with Viewer, Member, and Admin roles.',
   },
   {
     icon: Zap,

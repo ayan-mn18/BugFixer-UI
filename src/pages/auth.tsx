@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Bug, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,8 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const { login, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +24,7 @@ export function LoginPage() {
     const success = await login(email, password);
     if (success) {
       toast.success('Welcome back!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     } else {
       toast.error(error || 'Invalid credentials');
     }
@@ -104,6 +106,8 @@ export function SignupPage() {
   const [password, setPassword] = useState('');
   const { signup, isLoading, error, clearError } = useAuthStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +116,7 @@ export function SignupPage() {
     const success = await signup(email, password, name);
     if (success) {
       toast.success('Account created successfully!');
-      navigate('/dashboard');
+      navigate(redirectTo);
     } else {
       toast.error(error || 'Failed to create account');
     }

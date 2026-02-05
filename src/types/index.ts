@@ -45,7 +45,7 @@ export interface Bug {
 }
 
 // Project member types
-export type MemberRole = 'VIEWER' | 'CONTRIBUTOR' | 'MAINTAINER';
+export type MemberRole = 'VIEWER' | 'MEMBER' | 'ADMIN';
 
 export interface ProjectMember {
   id: string;
@@ -106,6 +106,6 @@ export const SOURCE_CONFIG: Record<Source, { label: string; icon: string }> = {
 
 export const ROLE_CONFIG: Record<MemberRole, { label: string; description: string }> = {
   VIEWER: { label: 'Viewer', description: 'Can view bugs only' },
-  CONTRIBUTOR: { label: 'Contributor', description: 'Can view and create bugs' },
-  MAINTAINER: { label: 'Maintainer', description: 'Can view, create, and move bugs' },
+  MEMBER: { label: 'Member', description: 'Can view and create bugs' },
+  ADMIN: { label: 'Admin', description: 'Can manage bugs and members' },
 };

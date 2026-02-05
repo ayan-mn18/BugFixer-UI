@@ -28,7 +28,7 @@ export interface ProjectsResponse {
 
 export interface ProjectResponse {
   project: ProjectWithStats;
-  userRole?: 'owner' | 'maintainer' | 'contributor' | 'viewer' | null;
+  userRole?: 'owner' | 'admin' | 'member' | 'viewer' | null;
 }
 
 // ============================================================================

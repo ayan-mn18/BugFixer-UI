@@ -440,6 +440,12 @@ export const useBugsStore = create<BugsState>((set, get) => ({
 // MEMBERS STORE
 // ============================================================================
 
+type AddMemberResult = 
+  | { success: true; type: 'member' }
+  | { success: true; type: 'invitation'; email: string }
+  | { success: true; type: 'unknown' }
+  | { success: false; type: 'error' };
+
 interface MembersState {
   members: ProjectMember[];
   accessRequests: AccessRequest[];
@@ -447,7 +453,7 @@ interface MembersState {
   error: string | null;
   fetchProjectMembers: (projectId: string) => Promise<void>;
   fetchAccessRequests: (projectId: string) => Promise<void>;
-  addMember: (projectId: string, email: string, role?: MemberRole) => Promise<boolean>;
+  addMember: (projectId: string, email: string, role?: MemberRole) => Promise<AddMemberResult>;
   removeMember: (memberId: string) => Promise<boolean>;
   updateMemberRole: (memberId: string, role: MemberRole) => Promise<boolean>;
   requestAccess: (projectId: string, message?: string) => Promise<boolean>;
@@ -489,15 +495,28 @@ export const useMembersStore = create<MembersState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await membersApi.addMember(projectId, { email, role });
-      set((state) => ({ 
-        members: [...state.members, response.member], 
-        isLoading: false 
-      }));
-      return true;
+      
+      // Check if it was a direct member addition or an invitation
+      if (response.member) {
+        // User exists - was added directly
+        const newMember = response.member;
+        set((state) => ({ 
+          members: [...state.members, newMember], 
+          isLoading: false 
+        }));
+        return { success: true, type: 'member' as const };
+      } else if (response.invitation) {
+        // User doesn't exist - invitation was sent
+        set({ isLoading: false });
+        return { success: true, type: 'invitation' as const, email: response.invitation.email };
+      }
+      
+      set({ isLoading: false });
+      return { success: true, type: 'unknown' as const };
     } catch (error) {
       const message = getErrorMessage(error);
       set({ isLoading: false, error: message });
-      return false;
+      return { success: false, type: 'error' as const };
     }
   },
 

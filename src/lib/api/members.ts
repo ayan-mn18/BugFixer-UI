@@ -45,11 +45,23 @@ export async function getProjectMembers(projectId: string): Promise<MembersRespo
   return get<MembersResponse>(`/members/${projectId}`);
 }
 
+export interface AddMemberResponse {
+  message: string;
+  member?: ProjectMember;
+  invitation?: {
+    id: string;
+    email: string;
+    role: string;
+    status: string;
+    expiresAt: string;
+  };
+}
+
 /**
- * Add a member to a project
+ * Add a member to a project (or send invitation if user doesn't exist)
  */
-export async function addMember(projectId: string, data: AddMemberRequest): Promise<{ message: string; member: ProjectMember }> {
-  return post<{ message: string; member: ProjectMember }>(`/members/${projectId}`, data);
+export async function addMember(projectId: string, data: AddMemberRequest): Promise<AddMemberResponse> {
+  return post<AddMemberResponse>(`/members/${projectId}`, data);
 }
 
 /**

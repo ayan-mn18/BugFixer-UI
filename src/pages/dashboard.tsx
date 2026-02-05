@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock, Loader2 } from 'lucide-react';
+import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock, Loader2, Users, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore, useProjectsStore } from '@/stores';
 import type { Project } from '@/types';
 
-function ProjectCard({ project, isOwner }: { project: Project; isOwner: boolean }) {
+function ProjectCard({ project, isOwner, isMember }: { project: Project; isOwner: boolean; isMember?: boolean }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -24,8 +24,8 @@ function ProjectCard({ project, isOwner }: { project: Project; isOwner: boolean 
           <CardHeader className="pb-3">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <FolderKanban className="h-5 w-5 text-primary" />
+                <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${isOwner ? 'bg-primary/10' : 'bg-blue-500/10'}`}>
+                  <FolderKanban className={`h-5 w-5 ${isOwner ? 'text-primary' : 'text-blue-500'}`} />
                 </div>
                 <div>
                   <CardTitle className="text-lg">{project.name}</CardTitle>
@@ -45,7 +45,16 @@ function ProjectCard({ project, isOwner }: { project: Project; isOwner: boolean 
                   </Badge>
                 )}
                 {isOwner && (
-                  <Badge className="text-xs">Owner</Badge>
+                  <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
+                    <Crown className="h-3 w-3 mr-1" />
+                    Owner
+                  </Badge>
+                )}
+                {isMember && !isOwner && (
+                  <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-600 hover:bg-blue-500/20">
+                    <Users className="h-3 w-3 mr-1" />
+                    Member
+                  </Badge>
                 )}
               </div>
             </div>
@@ -80,7 +89,7 @@ function ProjectCard({ project, isOwner }: { project: Project; isOwner: boolean 
   );
 }
 
-function ProjectRow({ project, isOwner }: { project: Project; isOwner: boolean }) {
+function ProjectRow({ project, isOwner, isMember }: { project: Project; isOwner: boolean; isMember?: boolean }) {
   return (
     <Link to={`/projects/${project.slug}`}>
       <motion.div
@@ -89,8 +98,8 @@ function ProjectRow({ project, isOwner }: { project: Project; isOwner: boolean }
         className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
       >
         <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-            <FolderKanban className="h-5 w-5 text-primary" />
+          <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${isOwner ? 'bg-primary/10' : 'bg-blue-500/10'}`}>
+            <FolderKanban className={`h-5 w-5 ${isOwner ? 'text-primary' : 'text-blue-500'}`} />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -100,7 +109,18 @@ function ProjectRow({ project, isOwner }: { project: Project; isOwner: boolean }
               ) : (
                 <Lock className="h-3 w-3 text-muted-foreground" />
               )}
-              {isOwner && <Badge className="text-xs">Owner</Badge>}
+              {isOwner && (
+                <Badge className="text-xs bg-amber-500 hover:bg-amber-600">
+                  <Crown className="h-3 w-3 mr-1" />
+                  Owner
+                </Badge>
+              )}
+              {isMember && !isOwner && (
+                <Badge variant="secondary" className="text-xs bg-blue-500/10 text-blue-600">
+                  <Users className="h-3 w-3 mr-1" />
+                  Member
+                </Badge>
+              )}
             </div>
             <p className="text-sm text-muted-foreground line-clamp-1">
               {project.description || 'No description'}
@@ -124,6 +144,91 @@ function ProjectRow({ project, isOwner }: { project: Project; isOwner: boolean }
   );
 }
 
+// Section component for project groups
+function ProjectSection({
+  title,
+  icon: Icon,
+  projects,
+  user,
+  view,
+  emptyMessage,
+  emptyDescription,
+  showCreateButton = false,
+  iconColor = 'text-primary',
+  bgColor = 'bg-primary/10'
+}: {
+  title: string;
+  icon: React.ElementType;
+  projects: Project[];
+  user: any;
+  view: 'grid' | 'list';
+  emptyMessage: string;
+  emptyDescription: string;
+  showCreateButton?: boolean;
+  iconColor?: string;
+  bgColor?: string;
+}) {
+  if (projects.length === 0 && !showCreateButton) return null;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className={`h-8 w-8 rounded-lg ${bgColor} flex items-center justify-center`}>
+          <Icon className={`h-4 w-4 ${iconColor}`} />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <p className="text-sm text-muted-foreground">{projects.length} project{projects.length !== 1 ? 's' : ''}</p>
+        </div>
+      </div>
+
+      {projects.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12 border border-dashed rounded-lg"
+        >
+          <div className={`h-12 w-12 rounded-full ${bgColor} flex items-center justify-center mx-auto mb-3`}>
+            <Icon className={`h-6 w-6 ${iconColor}`} />
+          </div>
+          <h3 className="font-medium mb-1">{emptyMessage}</h3>
+          <p className="text-sm text-muted-foreground mb-4">{emptyDescription}</p>
+          {showCreateButton && (
+            <Button asChild>
+              <Link to="/projects/new">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Project
+              </Link>
+            </Button>
+          )}
+        </motion.div>
+      ) : view === 'grid' ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {projects.map((project: Project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              isOwner={project.ownerId === user?.id}
+              isMember={project.ownerId !== user?.id}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {projects.map((project: Project) => (
+            <ProjectRow
+              key={project.id}
+              project={project}
+              isOwner={project.ownerId === user?.id}
+              isMember={project.ownerId !== user?.id}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [search, setSearch] = useState('');
@@ -135,11 +240,15 @@ export function DashboardPage() {
     fetchMyProjects();
   }, [fetchMyProjects]);
 
+  // Filter and separate projects
   const filteredProjects = projects.filter(
     (p: Project) =>
       p.name.toLowerCase().includes(search.toLowerCase()) ||
       p.description?.toLowerCase().includes(search.toLowerCase())
   );
+
+  const ownedProjects = filteredProjects.filter((p: Project) => p.ownerId === user?.id);
+  const sharedProjects = filteredProjects.filter((p: Project) => p.ownerId !== user?.id);
 
   if (isLoading && projects.length === 0) {
     return (
@@ -190,8 +299,35 @@ export function DashboardPage() {
         </Tabs>
       </div>
 
-      {/* Projects */}
-      {filteredProjects.length === 0 ? (
+      {/* Owned Projects Section */}
+      <ProjectSection
+        title="My Projects"
+        icon={Crown}
+        projects={ownedProjects}
+        user={user}
+        view={view}
+        emptyMessage="No projects created yet"
+        emptyDescription="Create your first project to start tracking bugs"
+        showCreateButton={true}
+        iconColor="text-amber-500"
+        bgColor="bg-amber-500/10"
+      />
+
+      {/* Shared Projects Section */}
+      <ProjectSection
+        title="Shared with Me"
+        icon={Users}
+        projects={sharedProjects}
+        user={user}
+        view={view}
+        emptyMessage="No shared projects"
+        emptyDescription="Projects shared with you will appear here"
+        iconColor="text-blue-500"
+        bgColor="bg-blue-500/10"
+      />
+
+      {/* Empty state when no projects at all */}
+      {filteredProjects.length === 0 && !search && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -200,37 +336,34 @@ export function DashboardPage() {
           <div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
             <FolderKanban className="h-8 w-8 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium mb-2">No projects yet</h3>
-          <p className="text-muted-foreground mb-4">
-            Create your first project to start tracking bugs
+          <h3 className="text-lg font-medium mb-2">Welcome to BugFixer!</h3>
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            Get started by creating your first project or wait for someone to invite you to theirs.
           </p>
           <Button asChild>
             <Link to="/projects/new">
               <Plus className="h-4 w-4 mr-2" />
-              Create Project
+              Create Your First Project
             </Link>
           </Button>
         </motion.div>
-      ) : view === 'grid' ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project: Project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              isOwner={project.ownerId === user?.id}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {filteredProjects.map((project: Project) => (
-            <ProjectRow
-              key={project.id}
-              project={project}
-              isOwner={project.ownerId === user?.id}
-            />
-          ))}
-        </div>
+      )}
+
+      {/* No search results */}
+      {filteredProjects.length === 0 && search && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center py-12"
+        >
+          <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+            <Search className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h3 className="font-medium mb-1">No projects found</h3>
+          <p className="text-sm text-muted-foreground">
+            Try searching with different keywords
+          </p>
+        </motion.div>
       )}
     </div>
   );
