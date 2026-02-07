@@ -1,7 +1,7 @@
 import axios, { AxiosError, type AxiosInstance, type AxiosRequestConfig } from 'axios';
 
-// API Base URL - change this for production
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// API Base URL - reads from env, defaults to local dev
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:7070/api';
 
 // Create axios instance with defaults
 const apiClient: AxiosInstance = axios.create({
