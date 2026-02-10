@@ -1,8 +1,5 @@
 import apiClient from './client';
 
-// API Base URL - same as main client
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:7070/api';
-
 // ============================================================================
 // TYPES
 // ============================================================================
