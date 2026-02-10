@@ -1,4 +1,4 @@
-import axios from 'axios';
+import apiClient from './client';
 
 // API Base URL - same as main client
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:7070/api';
@@ -39,20 +39,10 @@ export interface UploadStatusResponse {
 // ============================================================================
 
 /**
- * Get the auth token for requests
- */
-function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('bugfixer_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-/**
  * Check upload service status
  */
 export async function getUploadStatus(): Promise<UploadStatusResponse> {
-  const response = await axios.get<UploadStatusResponse>(
-    `${API_BASE_URL}/upload/status`
-  );
+  const response = await apiClient.get<UploadStatusResponse>('/upload/status');
   return response.data;
 }
 
@@ -74,15 +64,13 @@ export async function uploadSingleImage(
     formData.append('bugId', bugId);
   }
 
-  const response = await axios.post<UploadSingleResponse>(
-    `${API_BASE_URL}/upload/image`,
+  const response = await apiClient.post<UploadSingleResponse>(
+    '/upload/image',
     formData,
     {
       headers: {
         'Content-Type': 'multipart/form-data',
-        ...getAuthHeader(),
       },
-      withCredentials: true,
     }
   );
 
@@ -109,15 +97,13 @@ export async function uploadMultipleImages(
     formData.append('bugId', bugId);
   }
 
-  const response = await axios.post<UploadMultipleResponse>(
-    `${API_BASE_URL}/upload/images`,
+  const response = await apiClient.post<UploadMultipleResponse>(
+    '/upload/images',
     formData,
     {
       headers: {
         'Content-Type': 'multipart/form-data',
-        ...getAuthHeader(),
       },
-      withCredentials: true,
     }
   );
 
@@ -129,16 +115,9 @@ export async function uploadMultipleImages(
  * @param url - The URL of the image to delete
  */
 export async function deleteImage(url: string): Promise<{ message: string }> {
-  const response = await axios.delete<{ message: string }>(
-    `${API_BASE_URL}/upload/image`,
-    {
-      data: { url },
-      headers: {
-        'Content-Type': 'application/json',
-        ...getAuthHeader(),
-      },
-      withCredentials: true,
-    }
+  const response = await apiClient.delete<{ message: string }>(
+    '/upload/image',
+    { data: { url } }
   );
 
   return response.data;
