@@ -37,6 +37,7 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
+import { ProjectPageSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -1005,12 +1006,7 @@ export function ProjectPage() {
   const isLoading = projectLoading || bugsLoading || membersLoading;
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading project...</p>
-      </div>
-    );
+    return <ProjectPageSkeleton />;
   }
 
   if (!project) {

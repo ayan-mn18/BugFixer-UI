@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Mail, Users, Check, X, Loader2, Clock, AlertCircle } from 'lucide-react';
+import { InviteSkeleton } from '@/components/skeletons';
 import { useAuthStore } from '@/stores';
 import { get, post, getErrorMessage } from '@/lib/api';
 import { toast } from 'sonner';
@@ -76,16 +77,7 @@ export function InvitePage() {
 
   // Loading state
   if (isLoading || authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/50">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-            <p className="text-muted-foreground">Loading invitation...</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <InviteSkeleton />;
   }
 
   // Error state

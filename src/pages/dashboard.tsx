@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock, Loader2, Users, Crown } from 'lucide-react';
+import { Plus, FolderKanban, Bug, Grid3X3, List, Search, Globe, Lock, Users, Crown } from 'lucide-react';
+import { DashboardSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -251,11 +252,7 @@ export function DashboardPage() {
   const sharedProjects = filteredProjects.filter((p: Project) => p.ownerId !== user?.id);
 
   if (isLoading && projects.length === 0) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
