@@ -196,7 +196,7 @@ export function LandingPage() {
       </section>
 
       {/* ─── Pipeline — The Core Story ─────────────────── */}
-      <section className="py-20 md:py-28 border-y bg-muted/30">
+      <section className="py-20 md:py-28 border-y bg-muted/30 overflow-hidden">
         <div className="container mx-auto px-4">
           <motion.div
             initial="initial"
@@ -220,44 +220,76 @@ export function LandingPage() {
           </motion.div>
 
           <div className="max-w-4xl mx-auto relative">
-            {/* Vertical connecting line */}
+            {/* ── Animated vertical line (desktop) ── */}
             <motion.div
               initial={{ scaleY: 0 }}
               whileInView={{ scaleY: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.2, delay: 0.3 }}
-              className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-border origin-top -translate-x-1/2 hidden md:block"
+              transition={{ duration: 1.8, delay: 0.2, ease: 'easeInOut' }}
+              className="absolute left-1/2 top-0 bottom-0 w-px origin-top -translate-x-1/2 hidden md:block"
+              style={{
+                background:
+                  'linear-gradient(to bottom, var(--color-border), var(--color-primary), var(--color-border))',
+              }}
             />
+            {/* ── Animated vertical line (mobile) ── */}
             <motion.div
               initial={{ scaleY: 0 }}
               whileInView={{ scaleY: 1 }}
               viewport={{ once: true }}
-              transition={{ duration: 1.2, delay: 0.3 }}
-              className="absolute left-6 top-0 bottom-0 w-px bg-border origin-top md:hidden"
+              transition={{ duration: 1.8, delay: 0.2, ease: 'easeInOut' }}
+              className="absolute left-6 top-0 bottom-0 w-px origin-top md:hidden"
+              style={{
+                background:
+                  'linear-gradient(to bottom, var(--color-border), var(--color-primary), var(--color-border))',
+              }}
             />
 
-            <motion.div
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true, margin: '-40px' }}
-              variants={staggerContainer}
-              className="space-y-8 md:space-y-12"
-            >
+            <div className="space-y-10 md:space-y-16">
               {pipelineSteps.map((step, i) => {
                 const isEven = i % 2 === 0;
                 return (
-                  <motion.div
-                    key={step.label}
-                    variants={fadeInUp}
-                    transition={{ duration: 0.45, delay: i * 0.08 }}
-                    className="relative flex gap-4 md:gap-0"
-                  >
-                    {/* Mobile layout */}
+                  <div key={step.label} className="relative flex gap-4 md:gap-0">
+                    {/* ── Mobile layout ── */}
                     <div className="md:hidden flex gap-4 items-start">
-                      <div className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center relative z-10`}>
-                        <step.icon className={`h-6 w-6 ${step.color}`} />
-                      </div>
-                      <div className="pt-1">
+                      {/* Icon with pulse */}
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        whileInView={{ scale: 1, rotate: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 200,
+                          damping: 15,
+                          delay: i * 0.12,
+                        }}
+                        className="relative z-10"
+                      >
+                        {/* Ping ring */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          whileInView={{ opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.12 + 0.4 }}
+                          className="absolute -inset-1 rounded-xl animate-ping opacity-20"
+                          style={{ animationDuration: '2.5s' }}
+                        >
+                          <div className={`h-full w-full rounded-xl ${step.bg}`} />
+                        </motion.div>
+                        <div
+                          className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center`}
+                        >
+                          <step.icon className={`h-6 w-6 ${step.color}`} />
+                        </div>
+                      </motion.div>
+
+                      <motion.div
+                        initial={{ opacity: 0, x: 20 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.5, delay: i * 0.12 + 0.15 }}
+                        className="pt-1"
+                      >
                         <div className="text-xs font-mono text-muted-foreground mb-1">
                           Step {i + 1}
                         </div>
@@ -265,50 +297,118 @@ export function LandingPage() {
                         <p className="text-muted-foreground text-sm leading-relaxed">
                           {step.description}
                         </p>
-                      </div>
+                      </motion.div>
                     </div>
 
-                    {/* Desktop layout — alternating sides */}
-                    <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] md:gap-8 md:items-center w-full">
+                    {/* ── Desktop layout — alternating sides ── */}
+                    <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] md:gap-10 md:items-center w-full">
                       {/* Left content */}
-                      <div className={`${isEven ? 'text-right' : ''}`}>
+                      <motion.div
+                        initial={{ opacity: 0, x: isEven ? -40 : 0 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          duration: 0.55,
+                          delay: i * 0.12 + 0.2,
+                          ease: 'easeOut',
+                        }}
+                        className={isEven ? 'text-right' : ''}
+                      >
                         {isEven && (
                           <div>
-                            <div className="text-xs font-mono text-muted-foreground mb-1">
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true }}
+                              transition={{ delay: i * 0.12 + 0.3 }}
+                              className="text-xs font-mono text-muted-foreground mb-1"
+                            >
                               Step {i + 1}
-                            </div>
+                            </motion.div>
                             <h3 className="font-semibold text-lg mb-1">{step.label}</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               {step.description}
                             </p>
                           </div>
                         )}
-                      </div>
+                      </motion.div>
 
-                      {/* Center icon */}
-                      <div className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center relative z-10`}>
-                        <step.icon className={`h-6 w-6 ${step.color}`} />
-                      </div>
+                      {/* Center icon — spring pop-in + hover float */}
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        whileInView={{ scale: 1, rotate: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          type: 'spring',
+                          stiffness: 220,
+                          damping: 16,
+                          delay: i * 0.12,
+                        }}
+                        whileHover={{ scale: 1.15, rotate: 6 }}
+                        className="relative z-10 cursor-default"
+                      >
+                        {/* Glow ring */}
+                        <motion.div
+                          initial={{ opacity: 0 }}
+                          whileInView={{ opacity: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: i * 0.12 + 0.4 }}
+                        >
+                          <motion.div
+                            animate={{
+                              scale: [1, 1.35, 1],
+                              opacity: [0.35, 0, 0.35],
+                            }}
+                            transition={{
+                              duration: 2.5,
+                              repeat: Infinity,
+                              delay: i * 0.3,
+                              ease: 'easeInOut',
+                            }}
+                            className={`absolute -inset-1.5 rounded-xl ${step.bg}`}
+                          />
+                        </motion.div>
+                        <div
+                          className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center shadow-sm`}
+                        >
+                          <step.icon className={`h-6 w-6 ${step.color}`} />
+                        </div>
+                      </motion.div>
 
                       {/* Right content */}
-                      <div>
+                      <motion.div
+                        initial={{ opacity: 0, x: !isEven ? 40 : 0 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true }}
+                        transition={{
+                          duration: 0.55,
+                          delay: i * 0.12 + 0.2,
+                          ease: 'easeOut',
+                        }}
+                      >
                         {!isEven && (
                           <div>
-                            <div className="text-xs font-mono text-muted-foreground mb-1">
+                            <motion.div
+                              initial={{ opacity: 0, y: 8 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true }}
+                              transition={{ delay: i * 0.12 + 0.3 }}
+                              className="text-xs font-mono text-muted-foreground mb-1"
+                            >
                               Step {i + 1}
-                            </div>
+                            </motion.div>
                             <h3 className="font-semibold text-lg mb-1">{step.label}</h3>
                             <p className="text-muted-foreground text-sm leading-relaxed">
                               {step.description}
                             </p>
                           </div>
                         )}
-                      </div>
+                      </motion.div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
