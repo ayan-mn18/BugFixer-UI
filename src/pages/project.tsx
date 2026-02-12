@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
@@ -36,6 +36,15 @@ import {
   GripVertical,
   Trash2,
   Loader2,
+  Copy,
+  Check,
+  Globe,
+  Code,
+  X,
+  RefreshCw,
+  Github,
+  ExternalLink,
+  Bot,
 } from 'lucide-react';
 import { ProjectPageSkeleton } from '@/components/skeletons';
 import { Button } from '@/components/ui/button';
@@ -62,11 +71,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { ImageUpload, ImageGallery } from '@/components/ui/image-upload';
-import { useAuthStore, useProjectsStore, useBugsStore, useMembersStore } from '@/stores';
+import { Switch } from '@/components/ui/switch';
+import { useAuthStore, useProjectsStore, useBugsStore, useMembersStore, useWidgetStore } from '@/stores';
 import { toast } from 'sonner';
 import type { Bug as BugType, Status, Priority, Source, Project, AccessRequest, ProjectMember } from '@/types';
-import { STATUS_CONFIG, PRIORITY_CONFIG, SOURCE_CONFIG, ROLE_CONFIG } from '@/types';
+import { STATUS_CONFIG, PRIORITY_CONFIG, SOURCE_CONFIG, ROLE_CONFIG, AGENT_PR_STATUS_CONFIG } from '@/types';
 import { formatDistanceToNow } from 'date-fns';
+import { ProjectSettingsDialog } from '@/components/project-settings-dialog';
 
 // ============================================================================
 // BUG CARD COMPONENT
@@ -359,6 +370,58 @@ function BugDetailModal({ bug, open, onOpenChange, isAdmin, onStatusChange, onDe
               <Label className="text-muted-foreground">Screenshots ({bug.screenshots.length})</Label>
               <ImageGallery images={bug.screenshots} />
             </div>
+          )}
+
+          {/* GitHub & AI Agent Info */}
+          {(bug.githubIssueUrl || bug.agentPrUrl) && (
+            <>
+              <Separator />
+              <div className="space-y-3">
+                {bug.githubIssueUrl && (
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-2">
+                      <Github className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">GitHub Issue #{bug.githubIssueNumber}</p>
+                        {bug.githubRepoFullName && (
+                          <p className="text-xs text-muted-foreground">{bug.githubRepoFullName}</p>
+                        )}
+                      </div>
+                    </div>
+                    <a
+                      href={bug.githubIssueUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      View <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+
+                {bug.agentPrUrl && bug.agentPrStatus && (
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">AI Fix PR #{bug.agentPrNumber}</p>
+                        <Badge className={`${AGENT_PR_STATUS_CONFIG[bug.agentPrStatus].color} text-white text-xs mt-1`}>
+                          {AGENT_PR_STATUS_CONFIG[bug.agentPrStatus].label}
+                        </Badge>
+                      </div>
+                    </div>
+                    <a
+                      href={bug.agentPrUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+                    >
+                      View PR <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </>
           )}
 
           <Separator />
@@ -819,6 +882,287 @@ function TeamModal({ open, onOpenChange, project, members, requests }: TeamModal
 }
 
 // ============================================================================
+// WIDGET SETTINGS DIALOG
+// ============================================================================
+
+interface WidgetSettingsDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  slug: string;
+}
+
+function WidgetSettingsDialog({ open, onOpenChange, slug }: WidgetSettingsDialogProps) {
+  const { widget, isLoading, fetchWidgetSettings, generateToken, updateSettings, deleteToken } = useWidgetStore();
+  const [newOrigin, setNewOrigin] = useState('');
+  const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    if (open && slug) {
+      fetchWidgetSettings(slug);
+      setConfirmDelete(false);
+    }
+  }, [open, slug, fetchWidgetSettings]);
+
+  const handleGenerate = async () => {
+    const success = await generateToken(slug);
+    if (success) {
+      toast.success(widget ? 'Widget token regenerated!' : 'Widget token generated!');
+    } else {
+      toast.error('Failed to generate widget token');
+    }
+  };
+
+  const handleToggle = async (enabled: boolean) => {
+    const success = await updateSettings(slug, { enabled });
+    if (success) {
+      toast.success(enabled ? 'Widget enabled' : 'Widget disabled');
+    }
+  };
+
+  const handleAddOrigin = async () => {
+    const origin = newOrigin.trim();
+    if (!origin) return;
+
+    // Basic URL validation — accept domains or full URLs
+    let normalizedOrigin = origin;
+    if (!origin.startsWith('http://') && !origin.startsWith('https://')) {
+      normalizedOrigin = `https://${origin}`;
+    }
+    // Remove trailing slashes
+    normalizedOrigin = normalizedOrigin.replace(/\/+$/, '');
+
+    const currentOrigins = widget?.allowedOrigins || [];
+    if (currentOrigins.includes(normalizedOrigin)) {
+      toast.error('Origin already added');
+      return;
+    }
+
+    const success = await updateSettings(slug, {
+      allowedOrigins: [...currentOrigins, normalizedOrigin],
+    });
+    if (success) {
+      setNewOrigin('');
+      toast.success('Origin added');
+    }
+  };
+
+  const handleRemoveOrigin = async (originToRemove: string) => {
+    const currentOrigins = widget?.allowedOrigins || [];
+    const success = await updateSettings(slug, {
+      allowedOrigins: currentOrigins.filter((o) => o !== originToRemove),
+    });
+    if (success) {
+      toast.success('Origin removed');
+    }
+  };
+
+  const handleCopySnippet = () => {
+    if (widget?.embedSnippet) {
+      navigator.clipboard.writeText(widget.embedSnippet);
+      setCopied(true);
+      toast.success('Embed snippet copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    const success = await deleteToken(slug);
+    if (success) {
+      toast.success('Widget token deleted');
+      setConfirmDelete(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Code className="h-5 w-5" />
+            Widget Settings
+          </DialogTitle>
+          <DialogDescription>
+            Embed a bug reporter widget on your website. Users can submit bugs directly from your app.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="mt-4 space-y-6">
+          {!widget ? (
+            /* No widget configured yet */
+            <div className="text-center py-10 space-y-4 border rounded-lg border-dashed">
+              <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center mx-auto">
+                <Code className="h-7 w-7 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-medium">No Widget Configured</h3>
+                <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+                  Generate a widget token to embed a bug reporter on your website. Your users will be able to submit bugs directly.
+                </p>
+              </div>
+              <Button onClick={handleGenerate} disabled={isLoading}>
+                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Generate Widget Token
+              </Button>
+            </div>
+          ) : (
+            /* Widget configured — show settings */
+            <>
+              {/* Enable/Disable Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <h4 className="text-sm font-medium">Widget Status</h4>
+                    <Badge variant={widget.enabled ? 'default' : 'secondary'}>
+                      {widget.enabled ? 'Active' : 'Disabled'}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {widget.enabled ? 'The widget is live and accepting bug reports' : 'The widget is disabled and hidden from your site'}
+                  </p>
+                </div>
+                <Switch
+                  checked={widget.enabled}
+                  onCheckedChange={handleToggle}
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Allowed Origins */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-muted-foreground" />
+                  <h4 className="text-sm font-medium">Allowed Origins</h4>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Specify which domains can load the widget. Leave empty to allow all origins.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://example.com"
+                    value={newOrigin}
+                    onChange={(e) => setNewOrigin(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddOrigin())}
+                    className="flex-1"
+                  />
+                  <Button size="sm" onClick={handleAddOrigin} disabled={!newOrigin.trim() || isLoading}>
+                    Add
+                  </Button>
+                </div>
+                {widget.allowedOrigins && widget.allowedOrigins.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {widget.allowedOrigins.map((origin) => (
+                      <Badge key={origin} variant="secondary" className="gap-1 pl-2 pr-1 py-1">
+                        <span className="text-xs font-mono">{origin}</span>
+                        <button
+                          onClick={() => handleRemoveOrigin(origin)}
+                          className="ml-1 hover:bg-muted rounded p-0.5"
+                          disabled={isLoading}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">No origin restrictions — all domains allowed</p>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Embed Snippet */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Code className="h-4 w-4 text-muted-foreground" />
+                    <h4 className="text-sm font-medium">Embed Code</h4>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleCopySnippet}>
+                    {copied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 mr-1 text-green-500" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3.5 w-3.5 mr-1" />
+                        Copy
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Paste this snippet before the closing <code className="text-[11px] bg-muted px-1 py-0.5 rounded">&lt;/body&gt;</code> tag of your website.
+                </p>
+                <pre className="p-3 rounded-lg bg-muted/50 border text-xs font-mono overflow-x-auto whitespace-pre-wrap break-all select-all">
+                  {widget.embedSnippet}
+                </pre>
+              </div>
+
+              <Separator />
+
+              {/* Danger Zone */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-destructive">Danger Zone</h4>
+                <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Regenerate Token</p>
+                    <p className="text-xs text-muted-foreground">
+                      Generate a new token. The old embed code will stop working.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={handleGenerate} disabled={isLoading}>
+                    <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                    Regenerate
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-lg">
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Delete Widget</p>
+                    <p className="text-xs text-muted-foreground">
+                      Remove the widget entirely. The embed code will stop working.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant={confirmDelete ? 'destructive' : 'outline'}
+                    onClick={handleDelete}
+                    disabled={isLoading}
+                  >
+                    {confirmDelete ? (
+                      <>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Confirm Delete
+                      </>
+                    ) : (
+                      <>
+                        <Trash2 className="h-3.5 w-3.5 mr-1" />
+                        Delete
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ============================================================================
 // MAIN PROJECT PAGE COMPONENT
 // ============================================================================
 
@@ -834,8 +1178,27 @@ export function ProjectPage() {
   const [bugSheetOpen, setBugSheetOpen] = useState(false);
   const [createBugOpen, setCreateBugOpen] = useState(false);
   const [teamSheetOpen, setTeamSheetOpen] = useState(false);
+  const [widgetSettingsOpen, setWidgetSettingsOpen] = useState(false);
+  const [projectSettingsOpen, setProjectSettingsOpen] = useState(false);
+  const [projectSettingsTab, setProjectSettingsTab] = useState('github');
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Handle OAuth callback redirect (opens settings dialog)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const connected = searchParams.get('connected');
+    if (tab === 'github' || tab === 'agent') {
+      setProjectSettingsTab(tab);
+      setProjectSettingsOpen(true);
+      if (connected === 'true') {
+        toast.success('GitHub connected successfully!');
+      }
+      // Clean URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Fetch project data when slug changes
   useEffect(() => {
@@ -1066,7 +1429,16 @@ export function ProjectPage() {
             </Button>
 
             {isAdmin && (
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" onClick={() => setWidgetSettingsOpen(true)}>
+                <Code className="h-4 w-4" />
+              </Button>
+            )}
+
+            {isAdmin && (
+              <Button variant="ghost" size="icon" onClick={() => {
+                setProjectSettingsTab('github');
+                setProjectSettingsOpen(true);
+              }}>
                 <Settings className="h-4 w-4" />
               </Button>
             )}
@@ -1135,6 +1507,25 @@ export function ProjectPage() {
         members={members}
         requests={requests}
       />
+
+      {/* Widget Settings Dialog */}
+      {isAdmin && (
+        <WidgetSettingsDialog
+          open={widgetSettingsOpen}
+          onOpenChange={setWidgetSettingsOpen}
+          slug={project.slug}
+        />
+      )}
+
+      {/* Project Settings Dialog (GitHub + AI Agent) */}
+      {isAdmin && (
+        <ProjectSettingsDialog
+          open={projectSettingsOpen}
+          onOpenChange={setProjectSettingsOpen}
+          projectId={project.id}
+          defaultTab={projectSettingsTab}
+        />
+      )}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { User, Project, Bug, ProjectMember, AccessRequest, Status, MemberRole, Priority, Source } from '@/types';
+import type { User, Project, Bug, ProjectMember, AccessRequest, Status, MemberRole, Priority, Source, WidgetToken } from '@/types';
 import * as authApi from '@/lib/api/auth';
 import * as projectsApi from '@/lib/api/projects';
 import * as bugsApi from '@/lib/api/bugs';
 import * as membersApi from '@/lib/api/members';
+import * as widgetApi from '@/lib/api/widget';
 import { getErrorMessage } from '@/lib/api/client';
 
 // ============================================================================
@@ -610,6 +611,82 @@ export const useMembersStore = create<MembersState>((set, get) => ({
   },
 
   clearMembers: () => set({ members: [], accessRequests: [], error: null }),
+
+  clearError: () => set({ error: null }),
+}));
+
+// ============================================================================
+// WIDGET STORE
+// ============================================================================
+
+interface WidgetState {
+  widget: WidgetToken | null;
+  isLoading: boolean;
+  error: string | null;
+  fetchWidgetSettings: (slug: string) => Promise<void>;
+  generateToken: (slug: string) => Promise<boolean>;
+  updateSettings: (slug: string, data: { allowedOrigins?: string[]; enabled?: boolean }) => Promise<boolean>;
+  deleteToken: (slug: string) => Promise<boolean>;
+  clearWidget: () => void;
+  clearError: () => void;
+}
+
+export const useWidgetStore = create<WidgetState>((set) => ({
+  widget: null,
+  isLoading: false,
+  error: null,
+
+  fetchWidgetSettings: async (slug) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await widgetApi.getWidgetSettings(slug);
+      set({ widget: response.widget, isLoading: false });
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+    }
+  },
+
+  generateToken: async (slug) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await widgetApi.generateWidgetToken(slug);
+      set({ widget: response.widget, isLoading: false });
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
+  },
+
+  updateSettings: async (slug, data) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await widgetApi.updateWidgetSettings(slug, data);
+      set({ widget: response.widget, isLoading: false });
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
+  },
+
+  deleteToken: async (slug) => {
+    set({ isLoading: true, error: null });
+    try {
+      await widgetApi.deleteWidgetToken(slug);
+      set({ widget: null, isLoading: false });
+      return true;
+    } catch (error) {
+      const message = getErrorMessage(error);
+      set({ isLoading: false, error: message });
+      return false;
+    }
+  },
+
+  clearWidget: () => set({ widget: null, error: null }),
 
   clearError: () => set({ error: null }),
 }));

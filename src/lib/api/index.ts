@@ -13,3 +13,12 @@ export * from './bugs';
 
 // Members API
 export * from './members';
+
+// Widget API
+export * from './widget';
+
+// GitHub API
+export * from './github';
+
+// Agent Config API
+export * from './agent-config';

@@ -13,6 +13,7 @@ import {
   ProfilePage,
   ProjectPage,
   InvitePage,
+  WidgetPage,
 } from '@/pages';
 import { useAuthStore } from '@/stores';
 
@@ -126,6 +127,9 @@ function App() {
 
         {/* Invitation page (accessible without auth to show info) */}
         <Route path="/invite/:token" element={<InvitePage />} />
+
+        {/* Widget page (rendered inside iframe, no layout) */}
+        <Route path="/widget/:token" element={<WidgetPage />} />
 
         {/* Catch all - redirect to landing */}
         <Route path="*" element={<Navigate to="/" replace />} />

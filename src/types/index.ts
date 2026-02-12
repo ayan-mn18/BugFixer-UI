@@ -40,9 +40,21 @@ export interface Bug {
   projectId: string;
   reporterId: string | null;
   reporter?: User | null;
+  // GitHub integration fields
+  githubIssueNumber?: number | null;
+  githubIssueUrl?: string | null;
+  githubRepoFullName?: string | null;
+  // AI agent fields
+  agentPrBranch?: string | null;
+  agentPrUrl?: string | null;
+  agentPrNumber?: number | null;
+  agentPrStatus?: AgentPRStatus | null;
+  agentTargetBranch?: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+export type AgentPRStatus = 'PENDING' | 'IN_PROGRESS' | 'PR_CREATED' | 'MERGED' | 'FAILED';
 
 // Project member types
 export type MemberRole = 'VIEWER' | 'MEMBER' | 'ADMIN';
@@ -108,4 +120,73 @@ export const ROLE_CONFIG: Record<MemberRole, { label: string; description: strin
   VIEWER: { label: 'Viewer', description: 'Can view bugs only' },
   MEMBER: { label: 'Member', description: 'Can view and create bugs' },
   ADMIN: { label: 'Admin', description: 'Can manage bugs and members' },
+};
+
+// Widget types
+export interface WidgetToken {
+  id: string;
+  token: string;
+  allowedOrigins: string[];
+  enabled: boolean;
+  embedSnippet: string;
+  createdAt: string;
+}
+
+// GitHub integration types
+export interface GitHubRepo {
+  id: string;
+  integrationId: string;
+  repoOwner: string;
+  repoName: string;
+  repoFullName: string;
+  isDefault: boolean;
+  autoCreateIssues: boolean;
+  labelSync: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GitHubIntegrationStatus {
+  connected: boolean;
+  integration: {
+    id: string;
+    githubUsername: string;
+    connectedAt: string;
+    repos: GitHubRepo[];
+  } | null;
+}
+
+export interface GitHubRepoOption {
+  id: number;
+  name: string;
+  fullName: string;
+  owner: string;
+  private: boolean;
+  defaultBranch: string;
+  description: string | null;
+}
+
+// AI Agent config types
+export type AIProvider = 'OPENAI' | 'ANTHROPIC' | 'GEMINI';
+
+export interface AgentConfig {
+  id?: string;
+  projectId: string;
+  enabled: boolean;
+  aiProvider: AIProvider;
+  aiModel: string;
+  systemPrompt: string | null;
+  autoAssign: boolean;
+  targetBranch: string;
+  prBranchPrefix: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const AGENT_PR_STATUS_CONFIG: Record<AgentPRStatus, { label: string; color: string }> = {
+  PENDING: { label: 'Pending', color: 'bg-slate-500' },
+  IN_PROGRESS: { label: 'In Progress', color: 'bg-blue-500' },
+  PR_CREATED: { label: 'PR Created', color: 'bg-purple-500' },
+  MERGED: { label: 'Merged', color: 'bg-green-500' },
+  FAILED: { label: 'Failed', color: 'bg-red-500' },
 };

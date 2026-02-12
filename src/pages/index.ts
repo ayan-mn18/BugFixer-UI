@@ -6,3 +6,4 @@ export { NewProjectPage } from './new-project';
 export { ProfilePage } from './profile';
 export { ProjectPage } from './project';
 export { InvitePage } from './invite';
+export { WidgetPage } from './widget';
