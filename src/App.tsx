@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
+import { LayoutSkeleton } from '@/components/skeletons';
 import { RootLayout, AuthLayout, DashboardLayout } from '@/components/layout';
 import {
   LandingPage,
@@ -21,11 +22,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   // Show nothing while checking auth (or you could show a spinner)
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LayoutSkeleton />;
   }
 
   if (!isAuthenticated) {
@@ -40,11 +37,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <LayoutSkeleton />;
   }
 
   if (isAuthenticated) {

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Globe, Bug, Users, Loader2 } from 'lucide-react';
+import { ExploreSkeleton } from '@/components/skeletons';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -169,12 +170,7 @@ export function ExplorePage() {
   );
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Loading projects...</p>
-      </div>
-    );
+    return <ExploreSkeleton />;
   }
 
   return (
