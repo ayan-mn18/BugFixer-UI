@@ -3,7 +3,6 @@ import {
   Github,
   Bot,
   Loader2,
-  ExternalLink,
   Trash2,
   Plus,
   Check,
