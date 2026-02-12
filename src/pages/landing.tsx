@@ -1,100 +1,114 @@
-import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView, useMotionValue, useTransform, animate } from 'framer-motion';
-import { Bug, Kanban, Users, Mail, Shield, Zap, ArrowRight, CheckCircle, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
+import {
+  Bug,
+  ArrowRight,
+  CheckCircle,
+  MessageSquarePlus,
+  GitBranch,
+  GitPullRequest,
+  GitMerge,
+  Sparkles,
+  Users,
+  Zap,
+  Shield,
+  Github,
+  Bot,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores';
-import { useRef } from 'react';
-
-// Animated counter component
-function AnimatedCounter({ value, suffix = '', duration = 2 }: { value: number; suffix?: string; duration?: number }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-100px" });
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, (latest) => Math.round(latest));
-  const [displayValue, setDisplayValue] = useState(0);
-
-  useEffect(() => {
-    if (isInView) {
-      const controls = animate(count, value, {
-        duration,
-        ease: "easeOut",
-      });
-
-      const unsubscribe = rounded.on("change", (latest) => {
-        setDisplayValue(latest);
-      });
-
-      return () => {
-        controls.stop();
-        unsubscribe();
-      };
-    }
-  }, [isInView, value, duration, count, rounded]);
-
-  return (
-    <span ref={ref}>
-      {displayValue.toLocaleString()}{suffix}
-    </span>
-  );
-}
 
 // Animation variants
 const fadeInUp = {
-  initial: { opacity: 0, y: 30 },
+  initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0 },
 };
 
 const staggerContainer = {
   animate: {
     transition: {
-      staggerChildren: 0.1,
+      staggerChildren: 0.08,
     },
   },
 };
 
-const scaleIn = {
-  initial: { opacity: 0, scale: 0.9 },
-  animate: { opacity: 1, scale: 1 },
-};
-
-const features = [
+// Pipeline steps — the core story of BugFixer
+const pipelineSteps = [
   {
-    icon: Kanban,
-    title: 'Kanban Board',
-    description: 'Visualize your bug workflow with drag-and-drop columns from Triage to Deployed.',
+    icon: MessageSquarePlus,
+    label: 'Bug Reported',
+    description: 'Customer or tester reports a bug via your project board or embeddable widget.',
+    color: 'text-red-500',
+    bg: 'bg-red-500/10',
+  },
+  {
+    icon: Bug,
+    label: 'Triaged',
+    description: 'Bugs are auto-categorized by priority and assigned to the right team member.',
+    color: 'text-orange-500',
+    bg: 'bg-orange-500/10',
+  },
+  {
+    icon: Github,
+    label: 'GitHub Issue Created',
+    description: 'Automatically syncs to GitHub — creates an issue with labels in your connected repo.',
+    color: 'text-foreground',
+    bg: 'bg-foreground/10',
+  },
+  {
+    icon: Bot,
+    label: 'AI Agent Analyzes',
+    description: 'Our AI agent reads the codebase, understands the bug, and writes a fix autonomously.',
+    color: 'text-primary',
+    bg: 'bg-primary/10',
+  },
+  {
+    icon: GitPullRequest,
+    label: 'PR Raised',
+    description: 'A pull request is opened automatically with the proposed fix, ready for review.',
+    color: 'text-blue-500',
+    bg: 'bg-blue-500/10',
+  },
+  {
+    icon: GitMerge,
+    label: 'Merged & Deployed',
+    description: 'Review, approve, merge — the reporter gets notified when the fix ships.',
+    color: 'text-green-500',
+    bg: 'bg-green-500/10',
+  },
+];
+
+const capabilities = [
+  {
+    icon: GitBranch,
+    title: 'GitHub Integration',
+    description: 'Connect your repos. Issues and PRs sync bi-directionally — no copy-paste.',
+  },
+  {
+    icon: Bot,
+    title: 'AI-Powered Fixes',
+    description: 'An AI agent reads your code, generates a fix, and opens a PR. You just review.',
   },
   {
     icon: Users,
     title: 'Team Collaboration',
-    description: 'Invite team members, manage access levels, and work together seamlessly.',
+    description: 'Invite your team with fine-grained roles — Viewer, Member, Admin.',
   },
   {
-    icon: Mail,
-    title: 'Email Notifications',
-    description: 'Automatic notifications when bugs are resolved, keeping reporters in the loop.',
+    icon: Zap,
+    title: 'Blazingly Fast',
+    description: 'Minimal, snappy UI. No loading spinners, no bloated dashboards.',
   },
   {
     icon: Shield,
     title: 'Access Control',
-    description: 'Fine-grained permissions with Viewer, Member, and Admin roles.',
+    description: 'Private & public projects, invitation flows, access requests — all built in.',
   },
   {
-    icon: Zap,
-    title: 'Fast & Lightweight',
-    description: 'Built for speed with a clean, minimalist interface that stays out of your way.',
+    icon: Sparkles,
+    title: 'Smart Notifications',
+    description: 'Reporters get emailed when their bug is fixed. Your team stays in sync.',
   },
-  {
-    icon: Bug,
-    title: 'Detailed Tracking',
-    description: 'Track priority, source, screenshots, and full history for every bug.',
-  },
-];
-
-const stats = [
-  { value: 10000, suffix: '+', label: 'Bugs Tracked' },
-  { value: 500, suffix: '+', label: 'Projects' },
-  { value: 99.9, suffix: '%', label: 'Uptime' },
 ];
 
 export function LandingPage() {
@@ -102,8 +116,8 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col overflow-hidden">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 md:py-32">
+      {/* ─── Hero ─────────────────────────────────────────── */}
+      <section className="relative py-24 md:py-36">
         <div className="container mx-auto px-4">
           <motion.div
             initial="initial"
@@ -111,177 +125,202 @@ export function LandingPage() {
             variants={staggerContainer}
             className="max-w-3xl mx-auto text-center"
           >
+            {/* Badge */}
             <motion.div
               variants={fadeInUp}
-              transition={{ duration: 0.6, ease: "easeOut" }}
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border bg-primary/5 text-sm mb-6"
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border bg-primary/5 text-sm mb-8"
             >
-              <motion.span
-                animate={{ rotate: [0, 15, -15, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <Sparkles className="h-4 w-4 text-primary" />
-              </motion.span>
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
               </span>
-              Now in Public Beta
+              From bug report to pull request — automated
             </motion.div>
 
+            {/* Headline */}
             <motion.h1
               variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
-              className="text-4xl md:text-6xl font-bold tracking-tight mb-6"
+              transition={{ duration: 0.5, delay: 0.05 }}
+              className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-[1.1]"
             >
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
-                Track bugs.
-              </motion.span>
+              Customers report bugs.
               <br />
-              <motion.span
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="text-primary"
-              >
-                Ship faster.
-              </motion.span>
+              <span className="text-primary">AI ships the fix.</span>
             </motion.h1>
 
+            {/* Sub */}
             <motion.p
               variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
-              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto"
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed"
             >
-              A minimalist bug tracking system for teams who value simplicity.
-              Kanban boards, team collaboration, and email notifications — nothing more, nothing less.
+              BugFixer connects your bug tracker to GitHub and an AI coding agent.
+              Bugs go in, pull requests come out — your team just reviews and merges.
             </motion.p>
 
+            {/* CTA */}
             <motion.div
               variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center"
             >
               {isAuthenticated ? (
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button size="lg" asChild>
+                  <Link to="/dashboard">
+                    Go to Dashboard
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
                   <Button size="lg" asChild>
-                    <Link to="/dashboard">
-                      Go to Dashboard
+                    <Link to="/signup">
+                      Start for Free
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
-                </motion.div>
-              ) : (
-                <>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button size="lg" asChild>
-                      <Link to="/signup">
-                        Start for Free
-                        <motion.span
-                          animate={{ x: [0, 4, 0] }}
-                          transition={{ duration: 1.5, repeat: Infinity }}
-                        >
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </motion.span>
-                      </Link>
-                    </Button>
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button size="lg" variant="outline" asChild>
-                      <Link to="/explore">Explore Projects</Link>
-                    </Button>
-                  </motion.div>
+                  <Button size="lg" variant="outline" asChild>
+                    <Link to="/explore">Explore Projects</Link>
+                  </Button>
                 </>
               )}
             </motion.div>
           </motion.div>
         </div>
 
-        {/* Background gradient */}
-        <div className="absolute inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px]"></div>
-
-        {/* Animated gradient orbs */}
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            opacity: [0.3, 0.5, 0.3],
-          }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl -z-10"
-        />
-        <motion.div
-          animate={{
-            scale: [1.1, 1, 1.1],
-            opacity: [0.2, 0.4, 0.2],
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/15 rounded-full blur-3xl -z-10"
-        />
+        {/* Background */}
+        <div className="absolute inset-0 -z-10 h-full w-full bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-size-[14px_24px]" />
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/20 rounded-full blur-3xl -z-10 animate-pulse" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl -z-10 animate-pulse" />
       </section>
 
-      {/* Stats Section */}
-      <section className="py-12 border-y bg-muted/30">
+      {/* ─── Pipeline — The Core Story ─────────────────── */}
+      <section className="py-20 md:py-28 border-y bg-muted/30">
         <div className="container mx-auto px-4">
           <motion.div
             initial="initial"
             whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
+            viewport={{ once: true, margin: '-80px' }}
             variants={staggerContainer}
-            className="grid grid-cols-3 gap-8"
+            className="text-center mb-16"
           >
-            {stats.map((stat, index) => (
-              <motion.div
-                key={stat.label}
-                variants={scaleIn}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="text-center"
-              >
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.5 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    duration: 0.5,
-                    delay: index * 0.15,
-                    type: "spring",
-                    stiffness: 100,
-                  }}
-                  className="text-3xl md:text-4xl font-bold text-primary"
-                >
-                  <AnimatedCounter
-                    value={stat.value}
-                    suffix={stat.suffix}
-                    duration={2 + index * 0.3}
-                  />
-                </motion.div>
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.5 + index * 0.1, duration: 0.4 }}
-                  className="text-sm text-muted-foreground mt-1"
-                >
-                  {stat.label}
-                </motion.div>
-              </motion.div>
-            ))}
+            <motion.h2
+              variants={fadeInUp}
+              className="text-3xl md:text-4xl font-bold mb-4"
+            >
+              How it works
+            </motion.h2>
+            <motion.p
+              variants={fadeInUp}
+              className="text-lg text-muted-foreground max-w-xl mx-auto"
+            >
+              Six steps. Fully automated. You stay in control.
+            </motion.p>
           </motion.div>
+
+          <div className="max-w-4xl mx-auto relative">
+            {/* Vertical connecting line */}
+            <motion.div
+              initial={{ scaleY: 0 }}
+              whileInView={{ scaleY: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.2, delay: 0.3 }}
+              className="absolute left-6 md:left-1/2 top-0 bottom-0 w-px bg-border origin-top -translate-x-1/2 hidden md:block"
+            />
+            <motion.div
+              initial={{ scaleY: 0 }}
+              whileInView={{ scaleY: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 1.2, delay: 0.3 }}
+              className="absolute left-6 top-0 bottom-0 w-px bg-border origin-top md:hidden"
+            />
+
+            <motion.div
+              initial="initial"
+              whileInView="animate"
+              viewport={{ once: true, margin: '-40px' }}
+              variants={staggerContainer}
+              className="space-y-8 md:space-y-12"
+            >
+              {pipelineSteps.map((step, i) => {
+                const isEven = i % 2 === 0;
+                return (
+                  <motion.div
+                    key={step.label}
+                    variants={fadeInUp}
+                    transition={{ duration: 0.45, delay: i * 0.08 }}
+                    className="relative flex gap-4 md:gap-0"
+                  >
+                    {/* Mobile layout */}
+                    <div className="md:hidden flex gap-4 items-start">
+                      <div className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center relative z-10`}>
+                        <step.icon className={`h-6 w-6 ${step.color}`} />
+                      </div>
+                      <div className="pt-1">
+                        <div className="text-xs font-mono text-muted-foreground mb-1">
+                          Step {i + 1}
+                        </div>
+                        <h3 className="font-semibold text-lg mb-1">{step.label}</h3>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                          {step.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Desktop layout — alternating sides */}
+                    <div className="hidden md:grid md:grid-cols-[1fr_auto_1fr] md:gap-8 md:items-center w-full">
+                      {/* Left content */}
+                      <div className={`${isEven ? 'text-right' : ''}`}>
+                        {isEven && (
+                          <div>
+                            <div className="text-xs font-mono text-muted-foreground mb-1">
+                              Step {i + 1}
+                            </div>
+                            <h3 className="font-semibold text-lg mb-1">{step.label}</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed">
+                              {step.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Center icon */}
+                      <div className={`shrink-0 h-12 w-12 rounded-xl ${step.bg} flex items-center justify-center relative z-10`}>
+                        <step.icon className={`h-6 w-6 ${step.color}`} />
+                      </div>
+
+                      {/* Right content */}
+                      <div>
+                        {!isEven && (
+                          <div>
+                            <div className="text-xs font-mono text-muted-foreground mb-1">
+                              Step {i + 1}
+                            </div>
+                            <h3 className="font-semibold text-lg mb-1">{step.label}</h3>
+                            <p className="text-muted-foreground text-sm leading-relaxed">
+                              {step.description}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Features Section */}
-      <section className="py-20 md:py-32">
+      {/* ─── Capabilities Grid ─────────────────────────── */}
+      <section className="py-20 md:py-28">
         <div className="container mx-auto px-4">
           <motion.div
             initial="initial"
             whileInView="animate"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6 }}
+            viewport={{ once: true, margin: '-80px' }}
+            variants={staggerContainer}
             className="text-center mb-16"
           >
             <motion.h2
@@ -302,280 +341,106 @@ export function LandingPage() {
           <motion.div
             initial="initial"
             whileInView="animate"
-            viewport={{ once: true, margin: "-50px" }}
+            viewport={{ once: true, margin: '-40px' }}
             variants={staggerContainer}
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
+            className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto"
           >
-            {features.map((feature, index) => (
+            {capabilities.map((cap, i) => (
               <motion.div
-                key={feature.title}
+                key={cap.title}
                 variants={fadeInUp}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                whileHover={{ y: -5, transition: { duration: 0.2 } }}
-                className="group p-6 rounded-xl border bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300 relative overflow-hidden"
+                transition={{ duration: 0.4, delay: i * 0.06 }}
+                className="group p-6 rounded-xl border bg-card hover:border-primary/30 transition-all duration-200"
               >
-                {/* Subtle background glow on hover */}
-                <motion.div
-                  className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                />
-
-                <motion.div
-                  animate={{
-                    y: [0, -4, 0],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    delay: index * 0.2,
-                    ease: "easeInOut"
-                  }}
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  className="relative h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors"
-                >
-                  <feature.icon className="h-6 w-6 text-primary" />
-                </motion.div>
-                <motion.h3
-                  className="relative font-semibold text-lg mb-2"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                >
-                  {feature.title}
-                </motion.h3>
-                <motion.p
-                  className="relative text-muted-foreground"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                >
-                  {feature.description}
-                </motion.p>
+                <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                  <cap.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="font-semibold mb-1.5">{cap.title}</h3>
+                <p className="text-muted-foreground text-sm leading-relaxed">
+                  {cap.description}
+                </p>
               </motion.div>
             ))}
           </motion.div>
         </div>
       </section>
 
-      {/* Workflow Section */}
-      <section className="py-20 md:py-32 bg-muted/30 overflow-hidden">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial="initial"
-            whileInView="animate"
-            viewport={{ once: true }}
-            variants={fadeInUp}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Simple workflow. <span className="text-primary">Powerful results.</span>
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              From bug report to deployment, track every step with clarity.
-            </p>
-          </motion.div>
-
-          <div className="max-w-4xl mx-auto">
-            <motion.div
-              initial="initial"
-              whileInView="animate"
-              viewport={{ once: true }}
-              variants={staggerContainer}
-              className="flex flex-col md:flex-row gap-4 md:gap-0 md:items-center justify-between relative"
-            >
-              {/* Connecting line for desktop */}
-              <motion.div
-                initial={{ scaleX: 0 }}
-                whileInView={{ scaleX: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 1, delay: 0.5 }}
-                className="hidden md:block absolute top-5 left-[10%] right-[10%] h-0.5 bg-border origin-left"
-              />
-
-              {['Triage', 'In Progress', 'Code Review', 'QA Testing', 'Deployed'].map(
-                (step, index) => (
-                  <motion.div
-                    key={step}
-                    variants={scaleIn}
-                    transition={{ duration: 0.4, delay: index * 0.15, type: "spring" }}
-                    whileHover={{ scale: 1.1 }}
-                    className="flex items-center gap-4 md:flex-col md:gap-2 relative z-10"
-                  >
-                    <motion.div
-                      initial={{ rotate: -180, opacity: 0 }}
-                      whileInView={{ rotate: 0, opacity: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ duration: 0.5, delay: index * 0.15 + 0.3 }}
-                      className="relative"
-                    >
-                      {/* Pulse ring animation */}
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.3, 1],
-                          opacity: [0.5, 0, 0.5]
-                        }}
-                        transition={{
-                          duration: 2,
-                          repeat: Infinity,
-                          delay: index * 0.3,
-                          ease: "easeOut"
-                        }}
-                        className="absolute inset-0 rounded-full bg-primary"
-                      />
-                      <div className="relative h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold shadow-lg">
-                        {index + 1}
-                      </div>
-                    </motion.div>
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      whileInView={{ opacity: 1 }}
-                      viewport={{ once: true }}
-                      transition={{ delay: 0.5 + index * 0.1 }}
-                      className="font-medium"
-                    >
-                      {step}
-                    </motion.span>
-                    {index < 4 && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -10 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.8 + index * 0.1 }}
-                      >
-                        <ArrowRight className="hidden md:block h-4 w-4 text-muted-foreground absolute translate-x-16" />
-                      </motion.div>
-                    )}
-                  </motion.div>
-                )
-              )}
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 md:py-32 relative overflow-hidden">
-        <div className="container mx-auto px-4">
+      {/* ─── CTA ──────────────────────────────────────── */}
+      <section className="py-20 md:py-28 relative overflow-hidden border-t bg-muted/30">
+        <div className="container mx-auto px-4 relative z-10">
           <motion.div
             initial="initial"
             whileInView="animate"
             viewport={{ once: true }}
             variants={staggerContainer}
-            className="max-w-3xl mx-auto text-center relative z-10"
+            className="max-w-2xl mx-auto text-center"
           >
-            <motion.div
-              variants={scaleIn}
-              transition={{ duration: 0.6, type: "spring" }}
+            <motion.h2
+              variants={fadeInUp}
+              className="text-3xl md:text-4xl font-bold mb-4"
             >
-              <motion.h2
-                animate={{ scale: [1, 1.02, 1] }}
-                transition={{ duration: 3, repeat: Infinity }}
-                className="text-3xl md:text-4xl font-bold mb-4"
-              >
-                Ready to squash some <span className="text-primary">bugs</span>?
-              </motion.h2>
-            </motion.div>
+              Stop chasing bugs.
+              <br />
+              <span className="text-primary">Let them fix themselves.</span>
+            </motion.h2>
             <motion.p
               variants={fadeInUp}
-              transition={{ delay: 0.1 }}
               className="text-lg text-muted-foreground mb-8"
             >
-              Join hundreds of teams already using BugFixer to ship better software.
+              Set up your project in under 2 minutes. Connect GitHub, enable the AI agent, and let BugFixer handle the rest.
             </motion.p>
 
             <motion.div
               variants={fadeInUp}
-              transition={{ delay: 0.2 }}
-              className="flex flex-col sm:flex-row gap-4 justify-center mb-8"
+              className="flex flex-col sm:flex-row gap-3 justify-center mb-8"
             >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button size="lg" asChild>
-                  <Link to="/signup">
-                    Get Started — It's Free
-                    <motion.span
-                      animate={{ x: [0, 4, 0] }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
-                    >
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </motion.span>
-                  </Link>
-                </Button>
-              </motion.div>
+              <Button size="lg" asChild>
+                <Link to="/signup">
+                  Get Started — It's Free
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
             </motion.div>
 
             <motion.div
               variants={fadeInUp}
-              transition={{ delay: 0.3 }}
-              className="flex flex-wrap justify-center gap-6 text-sm text-muted-foreground"
+              className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-muted-foreground"
             >
-              {[
-                'No credit card required',
-                'Free forever for small teams',
-                'Setup in 2 minutes',
-              ].map((text, index) => (
-                <motion.div
-                  key={text}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.4 + index * 0.1 }}
-                  className="flex items-center gap-2"
-                >
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  {text}
-                </motion.div>
-              ))}
+              {['No credit card required', 'Free for small teams', 'Setup in 2 minutes'].map(
+                (text) => (
+                  <span key={text} className="flex items-center gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                    {text}
+                  </span>
+                )
+              )}
             </motion.div>
           </motion.div>
         </div>
 
-        {/* Animated background for CTA */}
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.2, 0.1],
-          }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-3xl -z-0"
-        />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 bg-primary/5 rounded-full blur-3xl z-0" />
       </section>
 
-      {/* Footer */}
+      {/* ─── Footer ───────────────────────────────────── */}
       <footer className="border-t py-8">
         <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col md:flex-row justify-between items-center gap-4"
-          >
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 4 }}
-              >
-                <Bug className="h-4 w-4" />
-              </motion.div>
+              <Bug className="h-4 w-4" />
               <span>© 2026 BugFixer. Built with ❤️ for developers.</span>
             </div>
             <div className="flex gap-6 text-sm text-muted-foreground">
-              <Link to="#" className="hover:text-primary transition-colors">
+              <Link to="#" className="hover:text-foreground transition-colors">
                 Privacy
               </Link>
-              <Link to="#" className="hover:text-primary transition-colors">
+              <Link to="#" className="hover:text-foreground transition-colors">
                 Terms
               </Link>
-              <Link to="#" className="hover:text-primary transition-colors">
+              <Link to="#" className="hover:text-foreground transition-colors">
                 GitHub
               </Link>
             </div>
-          </motion.div>
+          </div>
         </div>
       </footer>
     </div>
